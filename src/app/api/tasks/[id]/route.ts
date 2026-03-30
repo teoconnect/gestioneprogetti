@@ -17,6 +17,10 @@ export async function PUT(
       updateData.endDate = new Date(updateData.endDate);
     }
 
+    if (updateData.progress !== undefined) {
+      updateData.progress = parseInt(updateData.progress, 10);
+    }
+
     const task = await prisma.task.update({
       where: { id: resolvedParams.id },
       data: updateData,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2 } from "lucide-react";
 import GanttChartWrapper from "@/components/GanttChartWrapper";
 
 type TaskItem = {
@@ -19,6 +19,10 @@ type Task = {
   description: string | null;
   startDate: string;
   endDate: string;
+  status: string;
+  progress: number;
+  color: string | null;
+  dependencies: string | null;
   items: TaskItem[];
 };
 
@@ -46,6 +50,12 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [taskDesc, setTaskDesc] = useState("");
   const [taskStart, setTaskStart] = useState("");
   const [taskEnd, setTaskEnd] = useState("");
+  const [taskStatus, setTaskStatus] = useState("TODO");
+  const [taskProgress, setTaskProgress] = useState("0");
+  const [taskColor, setTaskColor] = useState("");
+  const [taskDependencies, setTaskDependencies] = useState("");
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
   // Item form
   const [itemType, setItemType] = useState("text");
@@ -70,13 +80,30 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     fetchProject();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedParams.id]);
 
-  const handleCreateTask = async (e: React.FormEvent) => {
+  const resetTaskForm = () => {
+    setTaskName("");
+    setTaskDesc("");
+    setTaskStart("");
+    setTaskEnd("");
+    setTaskStatus("TODO");
+    setTaskProgress("0");
+    setTaskColor("");
+    setTaskDependencies("");
+    setIsEditingTask(false);
+    setEditingTaskId(null);
+  };
+
+  const handleCreateOrUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/tasks", {
-        method: "POST",
+      const url = isEditingTask ? `/api/tasks/${editingTaskId}` : "/api/tasks";
+      const method = isEditingTask ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: project?.id,
@@ -84,19 +111,34 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           description: taskDesc,
           startDate: taskStart,
           endDate: taskEnd,
+          status: taskStatus,
+          progress: taskProgress,
+          color: taskColor,
+          dependencies: taskDependencies,
         }),
       });
       if (res.ok) {
         setShowTaskModal(false);
-        setTaskName("");
-        setTaskDesc("");
-        setTaskStart("");
-        setTaskEnd("");
+        resetTaskForm();
         fetchProject();
       }
     } catch (error) {
-      console.error("Error creating task", error);
+      console.error("Error saving task", error);
     }
+  };
+
+  const openEditTaskModal = (task: Task) => {
+    setTaskName(task.name);
+    setTaskDesc(task.description || "");
+    setTaskStart(new Date(task.startDate).toISOString().split('T')[0]);
+    setTaskEnd(new Date(task.endDate).toISOString().split('T')[0]);
+    setTaskStatus(task.status);
+    setTaskProgress(task.progress.toString());
+    setTaskColor(task.color || "");
+    setTaskDependencies(task.dependencies || "");
+    setIsEditingTask(true);
+    setEditingTaskId(task.id);
+    setShowTaskModal(true);
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -190,6 +232,23 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const handleGanttProgressUpdate = async (task: Task, progress: number) => {
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          progress,
+        }),
+      });
+      if (res.ok) {
+        fetchProject(); // Refresh the data to reflect changes
+      }
+    } catch (error) {
+      console.error("Error updating task progress from Gantt", error);
+    }
+  };
+
   if (loading) return <div className="text-center py-10">Caricamento in corso...</div>;
   if (!project) return <div className="text-center py-10">Progetto non trovato</div>;
 
@@ -258,7 +317,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           <Calendar size={24} className="text-blue-600" />
           Gantt del Progetto
         </h2>
-        <GanttChartWrapper tasks={project.tasks} onTaskUpdate={handleGanttTaskUpdate} />
+        <GanttChartWrapper tasks={project.tasks} onTaskUpdate={handleGanttTaskUpdate} onTaskProgressUpdate={handleGanttProgressUpdate} />
       </div>
 
       <div className="mb-6 flex justify-between items-center">
@@ -286,10 +345,19 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
                     <span>Inizio: {new Date(task.startDate).toLocaleDateString()}</span>
                     <span>Fine: {new Date(task.endDate).toLocaleDateString()}</span>
+                    <span className="font-semibold text-gray-700">Stato: {task.status}</span>
+                    <span>Progresso: {task.progress}%</span>
                   </div>
                   {task.description && <p className="text-gray-600 mt-2 text-sm">{task.description}</p>}
                 </div>
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => openEditTaskModal(task)}
+                    className="text-gray-600 hover:bg-gray-200 p-1.5 rounded-md transition"
+                    title="Modifica Task"
+                  >
+                    <Edit2 size={18} />
+                  </button>
                   <button
                     onClick={() => {
                       setActiveTaskId(task.id);
@@ -355,9 +423,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       {/* Task Modal */}
       {showTaskModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Nuovo Task</h2>
-            <form onSubmit={handleCreateTask} className="space-y-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">{isEditingTask ? "Modifica Task" : "Nuovo Task"}</h2>
+            <form onSubmit={handleCreateOrUpdateTask} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome Task</label>
                 <input required type="text" value={taskName} onChange={e => setTaskName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
@@ -376,8 +444,36 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   <input required type="date" value={taskEnd} onChange={e => setTaskEnd(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stato</label>
+                  <select value={taskStatus} onChange={e => setTaskStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white">
+                    <option value="TODO">Da fare</option>
+                    <option value="IN_PROGRESS">In corso</option>
+                    <option value="DONE">Completato</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Progresso (%)</label>
+                  <input type="number" min="0" max="100" value={taskProgress} onChange={e => setTaskProgress(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Colore (es. #ff0000)</label>
+                  <div className="flex gap-2">
+                    <input type="color" value={taskColor || "#10b981"} onChange={e => setTaskColor(e.target.value)} className="h-10 w-10 border border-gray-300 rounded cursor-pointer" />
+                    <input type="text" placeholder="#10b981" value={taskColor} onChange={e => setTaskColor(e.target.value)} className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" title="ID dei task separati da virgola">Dipendenze (IDs)</label>
+                  <input type="text" placeholder="task-id-1, task-id-2" value={taskDependencies} onChange={e => setTaskDependencies(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" />
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setShowTaskModal(false)} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
+                <button type="button" onClick={() => { setShowTaskModal(false); resetTaskForm(); }} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
                 <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition">Salva Task</button>
               </div>
             </form>

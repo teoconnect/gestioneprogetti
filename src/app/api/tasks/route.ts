@@ -9,6 +9,10 @@ export async function POST(request: Request) {
         ...data,
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
+        status: data.status || "TODO",
+        progress: data.progress ? parseInt(data.progress, 10) : 0,
+        color: data.color || null,
+        dependencies: data.dependencies || null,
       },
     });
     return NextResponse.json(task, { status: 201 });
