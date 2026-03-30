@@ -10,6 +10,7 @@ interface GanttTask {
   end: string;
   progress: number;
   dependencies: string;
+  custom_class?: string;
 }
 
 interface GanttChartProps {
@@ -27,6 +28,14 @@ export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
     const formattedTasks: GanttTask[] = tasks.map((t) => {
       const startDate = new Date(t.startDate);
       const endDate = new Date(t.endDate);
+      const now = new Date();
+
+      let custom_class = "gantt-task-upcoming";
+      if (endDate < now) {
+        custom_class = "gantt-task-overdue";
+      } else if (startDate <= now && endDate >= now) {
+        custom_class = "gantt-task-ongoing";
+      }
 
       return {
         id: t.id,
@@ -35,6 +44,7 @@ export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
         end: endDate.toISOString().split('T')[0],
         progress: 100,
         dependencies: "",
+        custom_class,
       };
     });
 
@@ -75,6 +85,17 @@ export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
 
   return (
     <div className="w-full overflow-x-auto bg-white p-4 rounded-lg shadow border border-gray-100">
+      <style>{`
+        .gantt-task-overdue .bar {
+          fill: #ef4444 !important;
+        }
+        .gantt-task-ongoing .bar {
+          fill: #3b82f6 !important;
+        }
+        .gantt-task-upcoming .bar {
+          fill: #10b981 !important;
+        }
+      `}</style>
       <div className="mb-4 flex gap-2">
         <button className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded" onClick={() => ganttInst?.change_view_mode('Day')}>Giorno</button>
         <button className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded" onClick={() => ganttInst?.change_view_mode('Week')}>Settimana</button>

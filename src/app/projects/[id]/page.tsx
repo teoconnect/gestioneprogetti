@@ -193,6 +193,10 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   if (loading) return <div className="text-center py-10">Caricamento in corso...</div>;
   if (!project) return <div className="text-center py-10">Progetto non trovato</div>;
 
+  const totalTasks = project.tasks.length;
+  const overdueTasks = project.tasks.filter(t => new Date(t.endDate) < new Date()).length;
+  const tasksWithAttachments = project.tasks.filter(t => t.items?.some(i => i.type === 'attachment')).length;
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 transition">
@@ -215,6 +219,36 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
             {project.description && (
               <p className="text-gray-600 mt-2">{project.description}</p>
             )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
+          <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-600">Task Totali</p>
+              <p className="text-2xl font-bold text-blue-900">{totalTasks}</p>
+            </div>
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+              <Calendar size={20} />
+            </div>
+          </div>
+          <div className="bg-red-50 p-4 rounded-lg flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-600">Task Scaduti</p>
+              <p className="text-2xl font-bold text-red-900">{overdueTasks}</p>
+            </div>
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-600">
+              <Calendar size={20} />
+            </div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-600">Task con Allegati</p>
+              <p className="text-2xl font-bold text-green-900">{tasksWithAttachments}</p>
+            </div>
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+              <Paperclip size={20} />
+            </div>
           </div>
         </div>
       </div>

@@ -23,6 +23,9 @@ export default function Dashboard() {
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("active");
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+
   const fetchProjects = async () => {
     try {
       const res = await fetch("/api/projects");
@@ -74,7 +77,7 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Progetti</h1>
         <button
           onClick={() => setShowModal(true)}
@@ -83,6 +86,29 @@ export default function Dashboard() {
           <Plus size={20} />
           Nuovo Progetto
         </button>
+      </div>
+
+      <div className="flex gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Cerca per nome o codice..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+        <div className="w-48">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+          >
+            <option value="all">Tutti gli stati</option>
+            <option value="active">Attivo</option>
+            <option value="completed">Completato</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -106,7 +132,15 @@ export default function Dashboard() {
                   </td>
                 </tr>
               ) : (
-                projects.map((project) => (
+                projects
+                  .filter((p) => {
+                    const matchesSearch =
+                      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      p.code.toLowerCase().includes(searchQuery.toLowerCase());
+                    const matchesStatus = filterStatus === "all" || p.status === filterStatus;
+                    return matchesSearch && matchesStatus;
+                  })
+                  .map((project) => (
                   <tr key={project.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {project.code}
