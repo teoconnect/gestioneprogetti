@@ -1,0 +1,400 @@
+"use client";
+
+import { useEffect, useState, use } from "react";
+import Link from "next/link";
+import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2 } from "lucide-react";
+import GanttChartWrapper from "@/components/GanttChartWrapper";
+
+type TaskItem = {
+  id: string;
+  type: string;
+  name: string;
+  description: string | null;
+  value: string | null;
+};
+
+type Task = {
+  id: string;
+  name: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
+  items: TaskItem[];
+};
+
+type Project = {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  status: string;
+  tasks: Task[];
+};
+
+export default function ProjectDetails({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Modals state
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+
+  // Task form
+  const [taskName, setTaskName] = useState("");
+  const [taskDesc, setTaskDesc] = useState("");
+  const [taskStart, setTaskStart] = useState("");
+  const [taskEnd, setTaskEnd] = useState("");
+
+  // Item form
+  const [itemType, setItemType] = useState("text");
+  const [itemName, setItemName] = useState("");
+  const [itemDesc, setItemDesc] = useState("");
+  const [itemValue, setItemValue] = useState("");
+  const [itemFile, setItemFile] = useState<File | null>(null);
+
+  const fetchProject = async () => {
+    try {
+      const res = await fetch(`/api/projects/${resolvedParams.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProject(data);
+      }
+    } catch (error) {
+      console.error("Error fetching project", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProject();
+  }, [resolvedParams.id]);
+
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project?.id,
+          name: taskName,
+          description: taskDesc,
+          startDate: taskStart,
+          endDate: taskEnd,
+        }),
+      });
+      if (res.ok) {
+        setShowTaskModal(false);
+        setTaskName("");
+        setTaskDesc("");
+        setTaskStart("");
+        setTaskEnd("");
+        fetchProject();
+      }
+    } catch (error) {
+      console.error("Error creating task", error);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm("Sei sicuro di voler eliminare questo task?")) return;
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchProject();
+      }
+    } catch (error) {
+      console.error("Error deleting task", error);
+    }
+  };
+
+  const handleCreateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTaskId) return;
+
+    try {
+      let finalValue = itemValue;
+
+      if (itemType === "attachment" && itemFile) {
+        const formData = new FormData();
+        formData.append("file", itemFile);
+        const uploadRes = await fetch("/api/uploads", {
+          method: "POST",
+          body: formData,
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          finalValue = uploadData.path;
+        } else {
+          throw new Error("Failed to upload file");
+        }
+      }
+
+      const res = await fetch("/api/task-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId: activeTaskId,
+          type: itemType,
+          name: itemName,
+          description: itemDesc,
+          value: finalValue,
+        }),
+      });
+
+      if (res.ok) {
+        setShowItemModal(false);
+        setActiveTaskId(null);
+        setItemName("");
+        setItemDesc("");
+        setItemValue("");
+        setItemFile(null);
+        fetchProject();
+      }
+    } catch (error) {
+      console.error("Error creating item", error);
+      alert("Errore durante il salvataggio dell'elemento.");
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!confirm("Sei sicuro di voler eliminare questo elemento?")) return;
+    try {
+      const res = await fetch(`/api/task-items/${itemId}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchProject();
+      }
+    } catch (error) {
+      console.error("Error deleting task item", error);
+    }
+  };
+
+  const handleGanttTaskUpdate = async (task: Task, start: string, end: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startDate: start,
+          endDate: end,
+        }),
+      });
+      if (res.ok) {
+        fetchProject(); // Refresh the data to reflect changes
+      }
+    } catch (error) {
+      console.error("Error updating task from Gantt", error);
+    }
+  };
+
+  if (loading) return <div className="text-center py-10">Caricamento in corso...</div>;
+  if (!project) return <div className="text-center py-10">Progetto non trovato</div>;
+
+  return (
+    <div className="container mx-auto p-6 max-w-7xl">
+      <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 transition">
+        <ArrowLeft size={16} className="mr-2" />
+        Torna alla Dashboard
+      </Link>
+
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8 border border-gray-100">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+              <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm font-medium rounded-full">
+                {project.code}
+              </span>
+              <span className={`px-3 py-1 text-sm font-medium rounded-full ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                {project.status === 'active' ? 'Attivo' : 'Completato'}
+              </span>
+            </div>
+            {project.description && (
+              <p className="text-gray-600 mt-2">{project.description}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-8">
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Calendar size={24} className="text-blue-600" />
+          Gantt del Progetto
+        </h2>
+        <GanttChartWrapper tasks={project.tasks} onTaskUpdate={handleGanttTaskUpdate} />
+      </div>
+
+      <div className="mb-6 flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Task del Progetto</h2>
+        <button
+          onClick={() => setShowTaskModal(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition shadow-sm"
+        >
+          <Plus size={20} />
+          Nuovo Task
+        </button>
+      </div>
+
+      <div className="space-y-6">
+        {project.tasks.length === 0 ? (
+          <div className="text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            Nessun task per questo progetto.
+          </div>
+        ) : (
+          project.tasks.map((task) => (
+            <div key={task.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{task.name}</h3>
+                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                    <span>Inizio: {new Date(task.startDate).toLocaleDateString()}</span>
+                    <span>Fine: {new Date(task.endDate).toLocaleDateString()}</span>
+                  </div>
+                  {task.description && <p className="text-gray-600 mt-2 text-sm">{task.description}</p>}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setActiveTaskId(task.id);
+                      setShowItemModal(true);
+                    }}
+                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium bg-blue-50 px-3 py-1.5 rounded-md transition"
+                  >
+                    <Plus size={16} /> Aggiungi Riga
+                  </button>
+                  <button onClick={() => handleDeleteTask(task.id)} className="text-red-600 hover:bg-red-50 p-1.5 rounded-md transition">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4 bg-white">
+                {task.items.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic px-2">Nessun elemento abbinato.</p>
+                ) : (
+                  <div className="grid gap-3">
+                    {task.items.map((item) => (
+                      <div key={item.id} className="flex justify-between items-center p-3 rounded bg-gray-50 border border-gray-100 hover:border-gray-300 transition-colors">
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1 text-gray-400">
+                            {item.type === "text" && <FileText size={18} />}
+                            {item.type === "number" && <Hash size={18} />}
+                            {item.type === "date" && <Calendar size={18} />}
+                            {item.type === "attachment" && <Paperclip size={18} />}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900 flex items-center gap-2">
+                              {item.name}
+                              <span className="text-[10px] uppercase tracking-wider bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
+                                {item.type}
+                              </span>
+                            </div>
+                            {item.description && <div className="text-sm text-gray-500">{item.description}</div>}
+
+                            <div className="mt-1 text-sm font-medium text-blue-700">
+                              {item.type === "attachment" && item.value ? (
+                                <a href={item.value} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+                                  Scarica File
+                                </a>
+                              ) : (
+                                <span>{item.value}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <button onClick={() => handleDeleteItem(item.id)} className="text-gray-400 hover:text-red-600 transition-colors p-2">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Task Modal */}
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Nuovo Task</h2>
+            <form onSubmit={handleCreateTask} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome Task</label>
+                <input required type="text" value={taskName} onChange={e => setTaskName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
+                <textarea value={taskDesc} onChange={e => setTaskDesc(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" rows={3}></textarea>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Data Inizio</label>
+                  <input required type="date" value={taskStart} onChange={e => setTaskStart(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Data Fine</label>
+                  <input required type="date" value={taskEnd} onChange={e => setTaskEnd(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setShowTaskModal(false)} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
+                <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition">Salva Task</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Item Modal */}
+      {showItemModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Nuova Riga Dettaglio</h2>
+            <form onSubmit={handleCreateItem} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Elemento</label>
+                <select value={itemType} onChange={e => setItemType(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white">
+                  <option value="text">Testo</option>
+                  <option value="number">Numero</option>
+                  <option value="date">Data</option>
+                  <option value="attachment">Allegato</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <input required type="text" value={itemName} onChange={e => setItemName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
+                <textarea value={itemDesc} onChange={e => setItemDesc(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" rows={2}></textarea>
+              </div>
+
+              {itemType === "attachment" ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+                  <input required type="file" onChange={e => setItemFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition" />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Valore</label>
+                  <input required type={itemType === "number" ? "number" : itemType === "date" ? "date" : "text"} value={itemValue} onChange={e => setItemValue(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setShowItemModal(false)} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
+                <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition">Salva Riga</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
