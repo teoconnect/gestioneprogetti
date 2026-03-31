@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { unlink } from "fs/promises";
+import path from "path";
 
 export async function GET(
   request: Request,
@@ -56,6 +58,39 @@ export async function DELETE(
 ) {
   try {
     const resolvedParams = await params;
+
+    // Recupera tutti i task items di tipo allegato collegati a questo progetto
+    const project = await prisma.project.findUnique({
+      where: { id: resolvedParams.id },
+      include: {
+        tasks: {
+          include: {
+            items: {
+              where: { type: "attachment" }
+            }
+          }
+        }
+      }
+    });
+
+    if (project) {
+      for (const task of project.tasks) {
+        for (const item of task.items) {
+          if (item.value) {
+            try {
+              const filename = item.value.split("/").pop();
+              if (filename) {
+                const filepath = path.join(process.cwd(), "public", "uploads", filename);
+                await unlink(filepath);
+              }
+            } catch (err) {
+              console.error("Errore durante l'eliminazione del file allegato dal progetto:", err);
+            }
+          }
+        }
+      }
+    }
+
     await prisma.project.delete({
       where: { id: resolvedParams.id },
     });

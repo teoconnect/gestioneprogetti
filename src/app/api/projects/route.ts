@@ -8,8 +8,9 @@ export async function GET() {
     });
     return NextResponse.json(projects);
   } catch (error) {
+    console.error("GET /api/projects error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch projects" },
+      { error: "Failed to fetch projects", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
