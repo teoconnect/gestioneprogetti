@@ -43,6 +43,6 @@ next-env.d.ts
 .env
 uploads/
 
-dev.db
+# dev.db
 dev.db-journal
 dev_server.log

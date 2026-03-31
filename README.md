@@ -1,6 +1,6 @@
 # Gestione Progetti & Diagramma di Gantt
 
-Un'applicazione web sviluppata con **Next.js**, **Prisma** e **PostgreSQL** per la gestione di progetti e task aziendali, dotata di una pratica visualizzazione a **Diagramma di Gantt** per tenere traccia delle tempistiche.
+Un'applicazione web sviluppata con **Next.js**, **Prisma** e database (**SQLite** per test veloce o **PostgreSQL** per produzione) per la gestione di progetti e task aziendali, dotata di una pratica visualizzazione a **Diagramma di Gantt** per tenere traccia delle tempistiche. L'app include già dei dati di esempio pronti all'uso per essere testata istantaneamente!
 
 ## 🌟 Funzionalità
 
@@ -38,9 +38,11 @@ Questa sezione descrive come configurare l'applicazione per l'esecuzione in ambi
 
 ### Prerequisiti
 - **Node.js** (versione 18 o superiore raccomandata)
-- **PostgreSQL** (per il database)
+- *(Opzionale)* **PostgreSQL** (per messa in produzione)
 
-### Installazione e Avvio
+### Avvio Veloce (con SQLite e Dati di Esempio)
+
+L'applicazione include già un database SQLite (`dev.db`) pre-popolato con dei progetti e task di esempio, così puoi testare subito l'interfaccia e il diagramma di Gantt!
 
 1. **Clona la repository e installa le dipendenze:**
    ```bash
@@ -52,15 +54,11 @@ Questa sezione descrive come configurare l'applicazione per l'esecuzione in ambi
    ```bash
    cp .env.example .env
    ```
-   All'interno del file `.env` configura i parametri:
-   - `DATABASE_URL`: La stringa di connessione al tuo database PostgreSQL (es: `postgresql://user:password@localhost:5432/mydb`).
-   - `APP_USERS`: La lista di utenti autorizzati ad accedere all'app nel formato `utente:password,altro_utente:password`.
-   - `JWT_SECRET_KEY`: Una chiave segreta per criptare le sessioni JWT.
+   Il file `.env` sarà già pre-configurato per utilizzare SQLite (`DATABASE_URL="file:./dev.db"`). Puoi personalizzare le chiavi `APP_USERS` e `JWT_SECRET_KEY` se lo desideri.
 
-3. **Inizializza il database:**
-   Assicurati che PostgreSQL sia in esecuzione e lancia il comando per sincronizzare lo schema del database con Prisma:
+3. **Genera il Client Prisma (opzionale se già sincronizzato):**
    ```bash
-   npx prisma db push
+   npx prisma generate
    ```
 
 4. **Avvia il server di sviluppo:**
@@ -69,7 +67,29 @@ Questa sezione descrive come configurare l'applicazione per l'esecuzione in ambi
    ```
 
 5. **Apri l'app:**
-   Il progetto sarà ora accessibile all'indirizzo [http://localhost:3000](http://localhost:3000).
+   Il progetto sarà ora accessibile all'indirizzo [http://localhost:3000](http://localhost:3000). Accedi con `admin:admin123` o `user:user123`.
+
+### 🗄️ Passare a PostgreSQL per la Produzione
+
+Se vuoi usare l'applicazione in un ambiente di produzione o multi-utente, è facilissimo passare a PostgreSQL:
+
+1. Nel file `.env`, commenta la riga di SQLite e de-commenta (e compila) l'URL di connessione di PostgreSQL:
+   ```env
+   # DATABASE_URL="file:./dev.db"
+   DATABASE_URL="postgresql://user:password@localhost:5432/mydb?schema=public"
+   ```
+
+2. Sposta lo schema di produzione rinominandolo:
+   ```bash
+   mv prisma/schema.prisma prisma/schema.sqlite.prisma
+   mv prisma/schema.prod.prisma prisma/schema.prisma
+   ```
+
+3. Sincronizza il nuovo database e rigenera il client:
+   ```bash
+   npx prisma db push
+   npx prisma generate
+   ```
 
 ---
 
