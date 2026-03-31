@@ -14,12 +14,17 @@ interface GanttTask {
 }
 
 interface GanttChartProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tasks: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTaskUpdate: (task: any, start: string, end: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onTaskProgressUpdate?: (task: any, progress: number) => void;
 }
 
-export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
+export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [ganttInst, setGanttInst] = useState<any>(null);
 
   useEffect(() => {
@@ -31,9 +36,18 @@ export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
       const now = new Date();
 
       let custom_class = "gantt-task-upcoming";
-      if (endDate < now) {
+      if (t.color) {
+        // We'll generate a dynamic class in the styled block later,
+        // but frappe-gantt uses custom_class. We can pass the color to be handled via CSS or inject it.
+        // Actually frappe-gantt doesn't support inline styles for bars easily,
+        // so we can use a generated class or simply use status colors.
+        // Let's create a custom class name based on the color hex code (stripping the #)
+        custom_class = `gantt-task-color-${t.color.replace('#', '')}`;
+      } else if (t.status === "DONE") {
+        custom_class = "gantt-task-done";
+      } else if (endDate < now && t.status !== "DONE") {
         custom_class = "gantt-task-overdue";
-      } else if (startDate <= now && endDate >= now) {
+      } else if (startDate <= now && endDate >= now && t.status !== "DONE") {
         custom_class = "gantt-task-ongoing";
       }
 
@@ -42,8 +56,8 @@ export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
         name: t.name,
         start: startDate.toISOString().split('T')[0],
         end: endDate.toISOString().split('T')[0],
-        progress: 100,
-        dependencies: "",
+        progress: t.progress !== undefined ? t.progress : 100,
+        dependencies: t.dependencies || "",
         custom_class,
       };
     });
@@ -54,12 +68,10 @@ export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
 
     const newGantt = new Gantt(containerRef.current, formattedTasks, {
       view_mode: "Day",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       on_date_change: (task: any, start: Date, end: Date) => {
         const originalTask = tasks.find((t) => t.id === task.id);
         if (originalTask) {
-          const adjustedEnd = new Date(end);
-          adjustedEnd.setDate(adjustedEnd.getDate() + 1);
-
           onTaskUpdate(
             originalTask,
             start.toISOString(),
@@ -67,21 +79,40 @@ export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
           );
         }
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      on_progress_change: (task: any, progress: number) => {
+        const originalTask = tasks.find((t) => t.id === task.id);
+        if (originalTask && onTaskProgressUpdate) {
+          onTaskProgressUpdate(originalTask, progress);
+        }
+      },
       language: "it",
     });
 
     setGanttInst(newGantt);
 
+    const cleanupRef = containerRef.current;
+
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
+      if (cleanupRef) {
+        cleanupRef.innerHTML = "";
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks]);
 
   if (tasks.length === 0) {
     return <div className="p-4 text-center text-gray-500 bg-gray-50 rounded border">Nessun task nel progetto.</div>;
   }
+
+  // Generate dynamic CSS rules for custom colors
+  const colorStyles = tasks
+    .filter((t) => t.color)
+    .map((t) => {
+      const className = `gantt-task-color-${t.color.replace('#', '')}`;
+      return `.${className} .bar { fill: ${t.color} !important; }`;
+    })
+    .join('\n');
 
   return (
     <div className="w-full overflow-x-auto bg-white p-4 rounded-lg shadow border border-gray-100">
@@ -95,6 +126,10 @@ export default function GanttChart({ tasks, onTaskUpdate }: GanttChartProps) {
         .gantt-task-upcoming .bar {
           fill: #10b981 !important;
         }
+        .gantt-task-done .bar {
+          fill: #6b7280 !important;
+        }
+        ${colorStyles}
       `}</style>
       <div className="mb-4 flex gap-2">
         <button className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded" onClick={() => ganttInst?.change_view_mode('Day')}>Giorno</button>
