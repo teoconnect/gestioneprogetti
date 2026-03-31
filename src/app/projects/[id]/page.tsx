@@ -63,6 +63,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [itemDesc, setItemDesc] = useState("");
   const [itemValue, setItemValue] = useState("");
   const [itemFile, setItemFile] = useState<File | null>(null);
+  const [isEditingItem, setIsEditingItem] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   const fetchProject = async () => {
     try {
@@ -153,7 +155,29 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleCreateItem = async (e: React.FormEvent) => {
+  const resetItemForm = () => {
+    setItemType("text");
+    setItemName("");
+    setItemDesc("");
+    setItemValue("");
+    setItemFile(null);
+    setIsEditingItem(false);
+    setEditingItemId(null);
+  };
+
+  const openEditItemModal = (item: TaskItem, taskId: string) => {
+    setActiveTaskId(taskId);
+    setItemType(item.type);
+    setItemName(item.name);
+    setItemDesc(item.description || "");
+    setItemValue(item.value || "");
+    setItemFile(null);
+    setIsEditingItem(true);
+    setEditingItemId(item.id);
+    setShowItemModal(true);
+  };
+
+  const handleCreateOrUpdateItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeTaskId) return;
 
@@ -173,10 +197,16 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         } else {
           throw new Error("Failed to upload file");
         }
+      } else if (itemType === "attachment" && isEditingItem && !itemFile) {
+        // Se sto modificando un allegato ma non ho caricato un nuovo file, mantengo il vecchio valore
+        finalValue = itemValue;
       }
 
-      const res = await fetch("/api/task-items", {
-        method: "POST",
+      const url = isEditingItem ? `/api/task-items/${editingItemId}` : "/api/task-items";
+      const method = isEditingItem ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskId: activeTaskId,
@@ -190,14 +220,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         setShowItemModal(false);
         setActiveTaskId(null);
-        setItemName("");
-        setItemDesc("");
-        setItemValue("");
-        setItemFile(null);
+        resetItemForm();
         fetchProject();
       }
     } catch (error) {
-      console.error("Error creating item", error);
+      console.error("Error saving item", error);
       alert("Errore durante il salvataggio dell'elemento.");
     }
   };
@@ -360,6 +387,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   </button>
                   <button
                     onClick={() => {
+                      resetItemForm();
                       setActiveTaskId(task.id);
                       setShowItemModal(true);
                     }}
@@ -407,9 +435,14 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                             </div>
                           </div>
                         </div>
-                        <button onClick={() => handleDeleteItem(item.id)} className="text-gray-400 hover:text-red-600 transition-colors p-2">
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex gap-1">
+                          <button onClick={() => openEditItemModal(item, task.id)} className="text-gray-400 hover:text-blue-600 transition-colors p-2" title="Modifica Riga">
+                            <Edit2 size={16} />
+                          </button>
+                          <button onClick={() => handleDeleteItem(item.id)} className="text-gray-400 hover:text-red-600 transition-colors p-2" title="Elimina Riga">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -485,11 +518,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       {showItemModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Nuova Riga Dettaglio</h2>
-            <form onSubmit={handleCreateItem} className="space-y-4">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">{isEditingItem ? "Modifica Riga Dettaglio" : "Nuova Riga Dettaglio"}</h2>
+            <form onSubmit={handleCreateOrUpdateItem} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Elemento</label>
-                <select value={itemType} onChange={e => setItemType(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white">
+                <select disabled={isEditingItem} value={itemType} onChange={e => setItemType(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white disabled:bg-gray-100 disabled:text-gray-500">
                   <option value="text">Testo</option>
                   <option value="number">Numero</option>
                   <option value="date">Data</option>
@@ -507,8 +540,13 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
               {itemType === "attachment" ? (
                 <div key="attachment-input">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
-                  <input required type="file" onChange={e => setItemFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File {isEditingItem && "(carica per sostituire)"}</label>
+                  {isEditingItem && itemValue && (
+                    <div className="mb-2 text-sm text-gray-600">
+                      File attuale: <a href={itemValue} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Vedi file</a>
+                    </div>
+                  )}
+                  <input required={!isEditingItem} type="file" onChange={e => setItemFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition" />
                 </div>
               ) : (
                 <div key="value-input">
@@ -518,7 +556,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               )}
 
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setShowItemModal(false)} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
+                <button type="button" onClick={() => { setShowItemModal(false); resetItemForm(); }} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
                 <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition">Salva Riga</button>
               </div>
             </form>

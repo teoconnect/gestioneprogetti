@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
+import { writeFile, unlink } from "fs/promises";
 import path from "path";
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const fileUrl = searchParams.get("file");
+
+    if (!fileUrl) {
+      return NextResponse.json({ error: "No file specified" }, { status: 400 });
+    }
+
+    // Estrarre il nome del file dal percorso (es. /uploads/123-file.txt -> 123-file.txt)
+    const filename = fileUrl.split("/").pop();
+    if (!filename) {
+      return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
+    }
+
+    const filepath = path.join(process.cwd(), "public", "uploads", filename);
+
+    // Tentativo di eliminazione del file
+    await unlink(filepath);
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Delete file error:", error);
+    // Anche se il file non esiste, per noi è OK (potrebbe essere stato già rimosso)
+    return NextResponse.json({ success: true }, { status: 200 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

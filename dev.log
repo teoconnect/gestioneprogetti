@@ -1,0 +1,27 @@
+
+> temp_dir@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+- Environments: .env
+✓ Ready in 607ms
+
+ GET /login 200 in 907ms (next.js: 210ms, proxy.ts: 322ms, application-code: 375ms)
+ POST /api/auth/login 200 in 260ms (next.js: 178ms, proxy.ts: 17ms, application-code: 65ms)
+ GET / 200 in 313ms (next.js: 52ms, proxy.ts: 26ms, application-code: 234ms)
+ GET /api/projects 200 in 241ms (next.js: 152ms, proxy.ts: 18ms, application-code: 71ms)
+ POST /api/projects 201 in 34ms (next.js: 6ms, proxy.ts: 12ms, application-code: 16ms)
+ GET /api/projects 200 in 27ms (next.js: 8ms, proxy.ts: 9ms, application-code: 10ms)
+ GET / 200 in 60ms (next.js: 4ms, proxy.ts: 6ms, application-code: 50ms)
+ GET /api/projects 200 in 20ms (next.js: 4ms, proxy.ts: 8ms, application-code: 7ms)
+ GET /projects/61404e3b-74e2-4272-a9e8-d7d4dd957ca1 200 in 1692ms (next.js: 1641ms, proxy.ts: 9ms, application-code: 42ms)
+ GET /api/projects/61404e3b-74e2-4272-a9e8-d7d4dd957ca1 200 in 1044ms (next.js: 1024ms, proxy.ts: 7ms, application-code: 13ms)
+ GET /api/projects/61404e3b-74e2-4272-a9e8-d7d4dd957ca1 200 in 56ms (next.js: 37ms, proxy.ts: 8ms, application-code: 11ms)
+ POST /api/tasks 201 in 263ms (next.js: 231ms, proxy.ts: 16ms, application-code: 16ms)
+ GET /api/projects/61404e3b-74e2-4272-a9e8-d7d4dd957ca1 200 in 49ms (next.js: 29ms, proxy.ts: 9ms, application-code: 11ms)
+ POST /api/task-items 201 in 212ms (next.js: 185ms, proxy.ts: 8ms, application-code: 18ms)
+ GET /api/projects/61404e3b-74e2-4272-a9e8-d7d4dd957ca1 200 in 53ms (next.js: 34ms, proxy.ts: 7ms, application-code: 11ms)
+ PUT /api/task-items/23c8e49c-ce4e-49df-b580-176bcc5ddc94 200 in 1055ms (next.js: 1024ms, proxy.ts: 11ms, application-code: 20ms)
+ GET /api/projects/61404e3b-74e2-4272-a9e8-d7d4dd957ca1 200 in 43ms (next.js: 28ms, proxy.ts: 7ms, application-code: 9ms)
