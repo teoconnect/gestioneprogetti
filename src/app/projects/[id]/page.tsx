@@ -67,16 +67,15 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   // Gantt drag state refs
-  const isDraggingRef = useRef(false);
-  const pendingTaskUpdateRef = useRef<{ task: Task, start: string, end: string } | null>(null);
-  const pendingProgressUpdateRef = useRef<{ task: Task, progress: number } | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const getTasksToUpdateWithDependencies = useCallback((projectTasks: Task[], taskId: string, newStart: string, newEnd: string, oldStart: string) => {
     const offsetMs = new Date(newStart).getTime() - new Date(oldStart).getTime();
     const tasksToUpdate = [{ id: taskId, start: newStart, end: newEnd }];
     const processedIds = new Set<string>([taskId]);
 
-    if (offsetMs !== 0) {
+    // Apply dependencies update only if there's a shift or we want to be safe
+    if (offsetMs !== 0 || true) {
       const findDependencies = (parentId: string) => {
         const children = projectTasks.filter(t => {
           if (!t.dependencies) return false;
@@ -94,7 +93,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           const childNewStart = new Date(childOldStart + offsetMs).toISOString();
           const childNewEnd = new Date(childOldEnd + offsetMs).toISOString();
 
-          tasksToUpdate.push({ id: child.id, start: childNewStart, end: childNewEnd });
+          if (offsetMs !== 0) {
+            tasksToUpdate.push({ id: child.id, start: childNewStart, end: childNewEnd });
+          }
           findDependencies(child.id);
         }
       };
@@ -122,67 +123,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     fetchProject();
   }, [fetchProject]);
 
-  useEffect(() => {
-    const handleMouseDown = () => {
-      isDraggingRef.current = true;
-    };
-
-    const handleMouseUp = async () => {
-      isDraggingRef.current = false;
-      let shouldRefresh = false;
-
-      if (pendingTaskUpdateRef.current && project) {
-        const { task, start, end } = pendingTaskUpdateRef.current;
-
-        // Find the ORIGINAL task start date from our React state before frappe-gantt mutated it
-        const originalTaskFromState = project.tasks.find(t => t.id === task.id);
-        const originalStartDate = originalTaskFromState ? originalTaskFromState.startDate : task.startDate;
-
-        const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, originalStartDate);
-
-        try {
-          for (const update of tasksToUpdate) {
-            const res = await fetch(`/api/tasks/${update.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ startDate: update.start, endDate: update.end }),
-            });
-            if (res.ok) shouldRefresh = true;
-          }
-        } catch (error) {
-          console.error("Error updating task from Gantt (delayed)", error);
-        }
-        pendingTaskUpdateRef.current = null;
-      }
-
-      if (pendingProgressUpdateRef.current) {
-        const { task, progress } = pendingProgressUpdateRef.current;
-        try {
-          const res = await fetch(`/api/tasks/${task.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ progress }),
-          });
-          if (res.ok) shouldRefresh = true;
-        } catch (error) {
-          console.error("Error updating task progress from Gantt (delayed)", error);
-        }
-        pendingProgressUpdateRef.current = null;
-      }
-
-      if (shouldRefresh) {
-        fetchProject();
-      }
-    };
-
-    document.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("mouseup", handleMouseUp);
-
-    return () => {
-      document.removeEventListener("mousedown", handleMouseDown);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [fetchProject, project, getTasksToUpdateWithDependencies]);
 
   const resetTaskForm = () => {
     setTaskName("");
@@ -341,61 +281,65 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   };
 
   const handleGanttTaskUpdate = async (task: Task, start: string, end: string) => {
-    if (isDraggingRef.current) {
-      pendingTaskUpdateRef.current = { task, start, end };
-      return;
-    }
-
     if (!project) return;
 
-    try {
-      // Find the ORIGINAL task start date from our React state before frappe-gantt mutated it
-      const originalTaskFromState = project.tasks.find(t => t.id === task.id);
-      const originalStartDate = originalTaskFromState ? originalTaskFromState.startDate : task.startDate;
-
-      const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, originalStartDate);
-
-      let shouldRefresh = false;
-      for (const update of tasksToUpdate) {
-        const res = await fetch(`/api/tasks/${update.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            startDate: update.start,
-            endDate: update.end,
-          }),
-        });
-        if (res.ok) shouldRefresh = true;
-      }
-
-      if (shouldRefresh) {
-        fetchProject();
-      }
-    } catch (error) {
-      console.error("Error updating task from Gantt", error);
+    // Use a simple debounce to handle multiple on_date_change events gracefully
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
     }
+
+    updateTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Must use the untainted React state to find the true original date
+        // to correctly calculate the offset for dependents.
+        const originalTaskFromState = project.tasks.find(t => t.id === task.id);
+        const originalStartDate = originalTaskFromState ? originalTaskFromState.startDate : task.startDate;
+
+        const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, originalStartDate);
+
+        let shouldRefresh = false;
+        for (const update of tasksToUpdate) {
+          const res = await fetch(`/api/tasks/${update.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              startDate: update.start,
+              endDate: update.end,
+            }),
+          });
+          if (res.ok) shouldRefresh = true;
+        }
+
+        if (shouldRefresh) {
+          fetchProject();
+        }
+      } catch (error) {
+        console.error("Error updating task from Gantt", error);
+      }
+    }, 500);
   };
 
   const handleGanttProgressUpdate = async (task: Task, progress: number) => {
-    if (isDraggingRef.current) {
-      pendingProgressUpdateRef.current = { task, progress };
-      return;
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
     }
 
-    try {
-      const res = await fetch(`/api/tasks/${task.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          progress,
-        }),
-      });
-      if (res.ok) {
-        fetchProject(); // Refresh the data to reflect changes
+    updateTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tasks/${task.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            progress,
+          }),
+        });
+        if (res.ok) {
+          fetchProject();
+        }
+      } catch (error) {
+        console.error("Error updating task progress from Gantt", error);
       }
-    } catch (error) {
-      console.error("Error updating task progress from Gantt", error);
-    }
+    }, 500);
   };
 
   if (loading) return <div className="text-center py-10">Caricamento in corso...</div>;
