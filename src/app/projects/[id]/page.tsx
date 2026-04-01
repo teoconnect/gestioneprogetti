@@ -178,7 +178,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       document.removeEventListener("mousedown", handleMouseDown);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [fetchProject]);
+  }, [fetchProject, project, getTasksToUpdateWithDependencies]);
 
   const resetTaskForm = () => {
     setTaskName("");
