@@ -53,7 +53,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [taskStatus, setTaskStatus] = useState("TODO");
   const [taskProgress, setTaskProgress] = useState("0");
   const [taskColor, setTaskColor] = useState("");
-  const [taskDependencies, setTaskDependencies] = useState("");
+  const [taskDependencies, setTaskDependencies] = useState<string[]>([]);
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
@@ -93,7 +93,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskStatus("TODO");
     setTaskProgress("0");
     setTaskColor("");
-    setTaskDependencies("");
+    setTaskDependencies([]);
     setIsEditingTask(false);
     setEditingTaskId(null);
   };
@@ -116,7 +116,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           status: taskStatus,
           progress: taskProgress,
           color: taskColor,
-          dependencies: taskDependencies,
+          dependencies: taskDependencies.join(","),
         }),
       });
       if (res.ok) {
@@ -137,7 +137,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskStatus(task.status);
     setTaskProgress(task.progress.toString());
     setTaskColor(task.color || "");
-    setTaskDependencies(task.dependencies || "");
+    setTaskDependencies(task.dependencies ? task.dependencies.split(",").map(d => d.trim()).filter(Boolean) : []);
     setIsEditingTask(true);
     setEditingTaskId(task.id);
     setShowTaskModal(true);
@@ -499,9 +499,31 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     <input type="text" placeholder="#10b981" value={taskColor} onChange={e => setTaskColor(e.target.value)} className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1" title="ID dei task separati da virgola">Dipendenze (IDs)</label>
-                  <input type="text" placeholder="task-id-1, task-id-2" value={taskDependencies} onChange={e => setTaskDependencies(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" />
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Dipendenze (seleziona i task)</label>
+                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+                    {project?.tasks.filter(t => t.id !== editingTaskId).length === 0 ? (
+                      <p className="text-sm text-gray-500 italic">Nessun altro task disponibile nel progetto.</p>
+                    ) : (
+                      project?.tasks.filter(t => t.id !== editingTaskId).map(t => (
+                        <label key={t.id} className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={taskDependencies.includes(t.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTaskDependencies([...taskDependencies, t.id]);
+                              } else {
+                                setTaskDependencies(taskDependencies.filter(id => id !== t.id));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{t.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
 
