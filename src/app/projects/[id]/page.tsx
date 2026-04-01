@@ -134,7 +134,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       if (pendingTaskUpdateRef.current && project) {
         const { task, start, end } = pendingTaskUpdateRef.current;
 
-        const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, task.startDate);
+        // Find the ORIGINAL task start date from our React state before frappe-gantt mutated it
+        const originalTaskFromState = project.tasks.find(t => t.id === task.id);
+        const originalStartDate = originalTaskFromState ? originalTaskFromState.startDate : task.startDate;
+
+        const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, originalStartDate);
 
         try {
           for (const update of tasksToUpdate) {
@@ -345,7 +349,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     if (!project) return;
 
     try {
-      const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, task.startDate);
+      // Find the ORIGINAL task start date from our React state before frappe-gantt mutated it
+      const originalTaskFromState = project.tasks.find(t => t.id === task.id);
+      const originalStartDate = originalTaskFromState ? originalTaskFromState.startDate : task.startDate;
+
+      const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, originalStartDate);
 
       let shouldRefresh = false;
       for (const update of tasksToUpdate) {
