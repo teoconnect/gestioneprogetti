@@ -72,6 +72,7 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
 
     const newGantt = new Gantt(containerRef.current, formattedTasks, {
       view_mode: "Day",
+      move_dependencies: false,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       on_date_change: (task: any, start: Date, end: Date) => {
         const originalTask = tasks.find((t) => t.id === task.id);
@@ -93,6 +94,16 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
       },
       language: "it",
     });
+
+    // Disable automatic cascading of dependent tasks in frappe-gantt
+    if (newGantt) {
+      (newGantt as any).update_dependent_tasks = () => {};
+
+      // We also need to hook into the drag/resize events if frappe-gantt
+      // modifies children during dragging, or if `update_dependent_tasks` is sufficient.
+      // Usually `update_dependent_tasks` is called on end of drag, but dragging might also snap.
+    }
+
 
     setGanttInst(newGantt);
 
