@@ -69,42 +69,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   // Gantt drag state refs
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const getTasksToUpdateWithDependencies = useCallback((projectTasks: Task[], taskId: string, newStart: string, newEnd: string, oldStart: string) => {
-    const offsetMs = new Date(newStart).getTime() - new Date(oldStart).getTime();
-    const tasksToUpdate = [{ id: taskId, start: newStart, end: newEnd }];
-    const processedIds = new Set<string>([taskId]);
-
-    // Apply dependencies update only if there's a shift or we want to be safe
-    if (offsetMs !== 0 || true) {
-      const findDependencies = (parentId: string) => {
-        const children = projectTasks.filter(t => {
-          if (!t.dependencies) return false;
-          const deps = t.dependencies.split(",").map(d => d.trim());
-          return deps.includes(parentId);
-        });
-
-        for (const child of children) {
-          if (processedIds.has(child.id)) continue;
-          processedIds.add(child.id);
-
-          const childOldStart = new Date(child.startDate).getTime();
-          const childOldEnd = new Date(child.endDate).getTime();
-
-          const childNewStart = new Date(childOldStart + offsetMs).toISOString();
-          const childNewEnd = new Date(childOldEnd + offsetMs).toISOString();
-
-          if (offsetMs !== 0) {
-            tasksToUpdate.push({ id: child.id, start: childNewStart, end: childNewEnd });
-          }
-          findDependencies(child.id);
-        }
-      };
-
-      findDependencies(taskId);
-    }
-    return tasksToUpdate;
-  }, []);
-
   const fetchProject = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${resolvedParams.id}`);
@@ -290,27 +254,17 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
     updateTimeoutRef.current = setTimeout(async () => {
       try {
-        // Must use the untainted React state to find the true original date
-        // to correctly calculate the offset for dependents.
-        const originalTaskFromState = project.tasks.find(t => t.id === task.id);
-        const originalStartDate = originalTaskFromState ? originalTaskFromState.startDate : task.startDate;
+        // Aggiorniamo direttamente e unicamente il singolo task spostato sul Gantt
+        const res = await fetch(`/api/tasks/${task.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: start,
+            endDate: end,
+          }),
+        });
 
-        const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, originalStartDate);
-
-        let shouldRefresh = false;
-        for (const update of tasksToUpdate) {
-          const res = await fetch(`/api/tasks/${update.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              startDate: update.start,
-              endDate: update.end,
-            }),
-          });
-          if (res.ok) shouldRefresh = true;
-        }
-
-        if (shouldRefresh) {
+        if (res.ok) {
           fetchProject();
         }
       } catch (error) {

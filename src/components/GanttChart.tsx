@@ -68,18 +68,17 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
 
     // Clone formatted tasks because frappe-gantt mutates them internally
     // which can lead to nasty bugs with React state and staleness
-    const clonedTasksForGantt = JSON.parse(JSON.stringify(formattedTasks));
 
-    const newGantt = new Gantt(containerRef.current, clonedTasksForGantt, {
+
+    const newGantt = new Gantt(containerRef.current, formattedTasks, {
       view_mode: "Day",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       on_date_change: (task: any, start: Date, end: Date) => {
         const originalTask = tasks.find((t) => t.id === task.id);
         if (originalTask) {
-          // Pass a clone so the parent component gets an untainted object
 
-          onTaskUpdate(
-            { ...originalTask },
+                    onTaskUpdate(
+            originalTask,
             start.toISOString(),
             end.toISOString()
           );
@@ -89,7 +88,7 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
       on_progress_change: (task: any, progress: number) => {
         const originalTask = tasks.find((t) => t.id === task.id);
         if (originalTask && onTaskProgressUpdate) {
-          onTaskProgressUpdate({ ...originalTask }, progress);
+          onTaskProgressUpdate(originalTask, progress);
         }
       },
       language: "it",
@@ -105,7 +104,7 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks]);
+  }, [JSON.stringify(tasks)]);
 
   if (tasks.length === 0) {
     return <div className="p-4 text-center text-gray-500 bg-gray-50 rounded border">Nessun task nel progetto.</div>;
