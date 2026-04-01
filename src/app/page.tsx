@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, LogOut } from "lucide-react";
 
 type Project = {
   id: string;
@@ -80,17 +80,38 @@ export default function Dashboard() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (res.ok) {
+        window.location.href = "/login";
+      }
+    } catch (error) {
+      console.error("Failed to logout", error);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-5xl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Progetti</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition"
-        >
-          <Plus size={20} />
-          Nuovo Progetto
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition"
+          >
+            <Plus size={20} />
+            Nuovo Progetto
+          </button>
+          <button
+            onClick={handleLogout}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md flex items-center gap-2 transition"
+            title="Logout"
+          >
+            <LogOut size={20} />
+            Esci
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
