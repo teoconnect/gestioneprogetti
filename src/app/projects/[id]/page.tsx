@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2 } from "lucide-react";
 import GanttChartWrapper from "@/components/GanttChartWrapper";
@@ -66,7 +66,12 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
-  const fetchProject = async () => {
+  // Gantt drag state refs
+  const isDraggingRef = useRef(false);
+  const pendingTaskUpdateRef = useRef<{ task: Task, start: string, end: string } | null>(null);
+  const pendingProgressUpdateRef = useRef<{ task: Task, progress: number } | null>(null);
+
+  const fetchProject = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${resolvedParams.id}`);
       if (res.ok) {
@@ -78,12 +83,64 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolvedParams.id]);
 
   useEffect(() => {
     fetchProject();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedParams.id]);
+  }, [fetchProject]);
+
+  useEffect(() => {
+    const handleMouseDown = () => {
+      isDraggingRef.current = true;
+    };
+
+    const handleMouseUp = async () => {
+      isDraggingRef.current = false;
+      let shouldRefresh = false;
+
+      if (pendingTaskUpdateRef.current) {
+        const { task, start, end } = pendingTaskUpdateRef.current;
+        try {
+          const res = await fetch(`/api/tasks/${task.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ startDate: start, endDate: end }),
+          });
+          if (res.ok) shouldRefresh = true;
+        } catch (error) {
+          console.error("Error updating task from Gantt (delayed)", error);
+        }
+        pendingTaskUpdateRef.current = null;
+      }
+
+      if (pendingProgressUpdateRef.current) {
+        const { task, progress } = pendingProgressUpdateRef.current;
+        try {
+          const res = await fetch(`/api/tasks/${task.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ progress }),
+          });
+          if (res.ok) shouldRefresh = true;
+        } catch (error) {
+          console.error("Error updating task progress from Gantt (delayed)", error);
+        }
+        pendingProgressUpdateRef.current = null;
+      }
+
+      if (shouldRefresh) {
+        fetchProject();
+      }
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [fetchProject]);
 
   const resetTaskForm = () => {
     setTaskName("");
@@ -242,6 +299,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   };
 
   const handleGanttTaskUpdate = async (task: Task, start: string, end: string) => {
+    if (isDraggingRef.current) {
+      pendingTaskUpdateRef.current = { task, start, end };
+      return;
+    }
+
     try {
       const res = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
@@ -260,6 +322,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   };
 
   const handleGanttProgressUpdate = async (task: Task, progress: number) => {
+    if (isDraggingRef.current) {
+      pendingProgressUpdateRef.current = { task, progress };
+      return;
+    }
+
     try {
       const res = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
@@ -500,7 +567,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Dipendenze (seleziona i task)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Seleziona il task padre</label>
                   <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
                     {project?.tasks.filter(t => t.id !== editingTaskId).length === 0 ? (
                       <p className="text-sm text-gray-500 italic">Nessun altro task disponibile nel progetto.</p>
