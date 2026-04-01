@@ -10,6 +10,7 @@ export async function PUT(
   try {
     const resolvedParams = await params;
     const data = await request.json();
+    console.log(`[API PUT] Task ${resolvedParams.id} data received:`, JSON.stringify(data));
     const updateData = { ...data };
 
     if (updateData.startDate) {
