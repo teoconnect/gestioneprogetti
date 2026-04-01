@@ -71,6 +71,39 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const pendingTaskUpdateRef = useRef<{ task: Task, start: string, end: string } | null>(null);
   const pendingProgressUpdateRef = useRef<{ task: Task, progress: number } | null>(null);
 
+  const getTasksToUpdateWithDependencies = useCallback((projectTasks: Task[], taskId: string, newStart: string, newEnd: string, oldStart: string) => {
+    const offsetMs = new Date(newStart).getTime() - new Date(oldStart).getTime();
+    const tasksToUpdate = [{ id: taskId, start: newStart, end: newEnd }];
+    const processedIds = new Set<string>([taskId]);
+
+    if (offsetMs !== 0) {
+      const findDependencies = (parentId: string) => {
+        const children = projectTasks.filter(t => {
+          if (!t.dependencies) return false;
+          const deps = t.dependencies.split(",").map(d => d.trim());
+          return deps.includes(parentId);
+        });
+
+        for (const child of children) {
+          if (processedIds.has(child.id)) continue;
+          processedIds.add(child.id);
+
+          const childOldStart = new Date(child.startDate).getTime();
+          const childOldEnd = new Date(child.endDate).getTime();
+
+          const childNewStart = new Date(childOldStart + offsetMs).toISOString();
+          const childNewEnd = new Date(childOldEnd + offsetMs).toISOString();
+
+          tasksToUpdate.push({ id: child.id, start: childNewStart, end: childNewEnd });
+          findDependencies(child.id);
+        }
+      };
+
+      findDependencies(taskId);
+    }
+    return tasksToUpdate;
+  }, []);
+
   const fetchProject = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${resolvedParams.id}`);
@@ -98,15 +131,20 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       isDraggingRef.current = false;
       let shouldRefresh = false;
 
-      if (pendingTaskUpdateRef.current) {
+      if (pendingTaskUpdateRef.current && project) {
         const { task, start, end } = pendingTaskUpdateRef.current;
+
+        const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, task.startDate);
+
         try {
-          const res = await fetch(`/api/tasks/${task.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ startDate: start, endDate: end }),
-          });
-          if (res.ok) shouldRefresh = true;
+          for (const update of tasksToUpdate) {
+            const res = await fetch(`/api/tasks/${update.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ startDate: update.start, endDate: update.end }),
+            });
+            if (res.ok) shouldRefresh = true;
+          }
         } catch (error) {
           console.error("Error updating task from Gantt (delayed)", error);
         }
@@ -304,17 +342,26 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       return;
     }
 
+    if (!project) return;
+
     try {
-      const res = await fetch(`/api/tasks/${task.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startDate: start,
-          endDate: end,
-        }),
-      });
-      if (res.ok) {
-        fetchProject(); // Refresh the data to reflect changes
+      const tasksToUpdate = getTasksToUpdateWithDependencies(project.tasks, task.id, start, end, task.startDate);
+
+      let shouldRefresh = false;
+      for (const update of tasksToUpdate) {
+        const res = await fetch(`/api/tasks/${update.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: update.start,
+            endDate: update.end,
+          }),
+        });
+        if (res.ok) shouldRefresh = true;
+      }
+
+      if (shouldRefresh) {
+        fetchProject();
       }
     } catch (error) {
       console.error("Error updating task from Gantt", error);
