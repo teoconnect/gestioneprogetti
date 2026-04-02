@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2 } from "lucide-react";
+import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings } from "lucide-react";
 import GanttChartWrapper from "@/components/GanttChartWrapper";
 
 type TaskItem = {
@@ -23,6 +23,8 @@ type Task = {
   progress: number;
   color: string | null;
   dependencies: string | null;
+  notificationsEnabled: boolean;
+  notificationEmail: string | null;
   items: TaskItem[];
 };
 
@@ -32,6 +34,7 @@ type Project = {
   name: string;
   description: string | null;
   status: string;
+  defaultNotificationEmail: string | null;
   tasks: Task[];
 };
 
@@ -47,7 +50,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   // Modals state
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+
+  // Settings Form
+  const [defaultEmail, setDefaultEmail] = useState("");
 
   // Task form
   const [taskName, setTaskName] = useState("");
@@ -58,6 +65,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [taskProgress, setTaskProgress] = useState("0");
   const [taskColor, setTaskColor] = useState("");
   const [taskDependencies, setTaskDependencies] = useState<string[]>([]);
+  const [taskNotificationsEnabled, setTaskNotificationsEnabled] = useState(false);
+  const [taskNotificationEmail, setTaskNotificationEmail] = useState("");
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
@@ -115,6 +124,47 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setEditValue(currentValue || "");
   };
 
+  const handleProjectSettingsUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project) return;
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultNotificationEmail: defaultEmail }),
+      });
+      if (res.ok) {
+        fetchProject();
+        setShowSettingsModal(false);
+      }
+    } catch (error) {
+      console.error("Error saving project settings", error);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    if (!project || !defaultEmail) {
+      alert("Inserisci un'email prima di fare il test.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/projects/${project.id}/test-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: defaultEmail }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Email inviata con successo!");
+      } else {
+        alert("Errore nell'invio dell'email: " + (data.error || ""));
+      }
+    } catch (error) {
+      console.error("Error testing email", error);
+      alert("Si è verificato un errore.");
+    }
+  };
+
   const handleEditKeyDown = (e: React.KeyboardEvent, field: "name" | "description" | "status") => {
     if (e.key === "Enter" && field !== "description") {
       handleProjectUpdate(field, editValue);
@@ -123,6 +173,15 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }
   };
 
+
+  const openNewTaskModal = () => {
+    resetTaskForm();
+    if (project?.defaultNotificationEmail) {
+      setTaskNotificationsEnabled(true);
+      setTaskNotificationEmail(project.defaultNotificationEmail);
+    }
+    setShowTaskModal(true);
+  };
 
   const resetTaskForm = () => {
     setTaskName("");
@@ -133,6 +192,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskProgress("0");
     setTaskColor("");
     setTaskDependencies([]);
+    setTaskNotificationsEnabled(false);
+    setTaskNotificationEmail("");
     setIsEditingTask(false);
     setEditingTaskId(null);
   };
@@ -156,6 +217,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           progress: taskProgress,
           color: taskColor,
           dependencies: taskDependencies.join(","),
+          notificationsEnabled: taskNotificationsEnabled,
+          notificationEmail: taskNotificationEmail || null,
         }),
       });
       if (res.ok) {
@@ -177,6 +240,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskProgress(task.progress.toString());
     setTaskColor(task.color || "");
     setTaskDependencies(task.dependencies ? task.dependencies.split(",").map(d => d.trim()).filter(Boolean) : []);
+    setTaskNotificationsEnabled(task.notificationsEnabled);
+    setTaskNotificationEmail(task.notificationEmail || "");
     setIsEditingTask(true);
     setEditingTaskId(task.id);
     setShowTaskModal(true);
@@ -461,13 +526,25 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Task del Progetto</h2>
-        <button
-          onClick={() => setShowTaskModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition shadow-sm"
-        >
-          <Plus size={20} />
-          Nuovo Task
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setDefaultEmail(project?.defaultNotificationEmail || "");
+              setShowSettingsModal(true);
+            }}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md flex items-center gap-2 transition shadow-sm"
+          >
+            <Settings size={20} />
+            Impostazioni Progetto
+          </button>
+          <button
+            onClick={openNewTaskModal}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition shadow-sm"
+          >
+            <Plus size={20} />
+            Nuovo Task
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -611,6 +688,22 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     <input type="text" placeholder="#10b981" value={taskColor} onChange={e => setTaskColor(e.target.value)} className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" />
                   </div>
                 </div>
+                <div>
+                  <label className="flex items-center gap-2 mt-7 mb-1 cursor-pointer">
+                    <input type="checkbox" checked={taskNotificationsEnabled} onChange={e => setTaskNotificationsEnabled(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5" />
+                    <span className="text-sm font-medium text-gray-700">Abilita Notifiche Email</span>
+                  </label>
+                </div>
+              </div>
+
+              {taskNotificationsEnabled && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email per Notifiche</label>
+                  <input required type="email" value={taskNotificationEmail} onChange={e => setTaskNotificationEmail(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="nome@esempio.com" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Seleziona il task padre</label>
                   <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
@@ -642,6 +735,57 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
                 <button type="button" onClick={() => { setShowTaskModal(false); resetTaskForm(); }} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
                 <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition">Salva Task</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Impostazioni Progetto</h2>
+            <form onSubmit={handleProjectSettingsUpdate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Notifiche Predefinita
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={defaultEmail}
+                    onChange={(e) => setDefaultEmail(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    placeholder="nome@esempio.com"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTestEmail}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition whitespace-nowrap"
+                  >
+                    Testa
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Se impostata, questa email verrà abilitata di default per i nuovi task creati in questo progetto.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsModal(false)}
+                  className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition"
+                >
+                  Salva Impostazioni
+                </button>
               </div>
             </form>
           </div>
