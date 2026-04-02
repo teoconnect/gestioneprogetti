@@ -33,3 +33,9 @@ https://nextjs.org/telemetry
  GET /projects/255ebe59-4983-45d2-bb2f-b0483f825a0d 200 in 1365ms (next.js: 1319ms, proxy.ts: 6ms, application-code: 40ms)
  GET /api/projects/255ebe59-4983-45d2-bb2f-b0483f825a0d 200 in 1028ms (next.js: 1004ms, proxy.ts: 11ms, application-code: 13ms)
  GET /api/projects/255ebe59-4983-45d2-bb2f-b0483f825a0d 200 in 45ms (next.js: 31ms, proxy.ts: 6ms, application-code: 8ms)
+⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+▲ Next.js 16.2.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+- Environments: .env
+✓ Ready in 1242ms
