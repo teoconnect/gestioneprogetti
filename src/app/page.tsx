@@ -18,7 +18,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
-  const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("active");
@@ -53,11 +52,10 @@ export default function Dashboard() {
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, name, description, status }),
+        body: JSON.stringify({ name, description, status }),
       });
       if (res.ok) {
         setShowModal(false);
-        setCode("");
         setName("");
         setDescription("");
         setStatus("active");
@@ -202,10 +200,6 @@ export default function Dashboard() {
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Nuovo Progetto</h2>
             <form onSubmit={handleCreateProject} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Codice Progetto</label>
-                <input required type="text" value={code} onChange={e => setCode(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2" placeholder="es. XYaaa71743" />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Nome</label>
                 <input required type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2" />

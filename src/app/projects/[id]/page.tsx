@@ -40,6 +40,10 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Inline edit state
+  const [editingField, setEditingField] = useState<"name" | "description" | "status" | null>(null);
+  const [editValue, setEditValue] = useState("");
+
   // Modals state
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
@@ -86,6 +90,38 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     fetchProject();
   }, [fetchProject]);
+
+  const handleProjectUpdate = async (field: "name" | "description" | "status", value: string) => {
+    if (!project) return;
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (res.ok) {
+        fetchProject();
+        setEditingField(null);
+      } else {
+        console.error("Failed to update project field");
+      }
+    } catch (error) {
+      console.error("Error updating project field", error);
+    }
+  };
+
+  const startEditing = (field: "name" | "description" | "status", currentValue: string | null) => {
+    setEditingField(field);
+    setEditValue(currentValue || "");
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent, field: "name" | "description" | "status") => {
+    if (e.key === "Enter" && field !== "description") {
+      handleProjectUpdate(field, editValue);
+    } else if (e.key === "Escape") {
+      setEditingField(null);
+    }
+  };
 
 
   const resetTaskForm = () => {
@@ -312,18 +348,74 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-8 border border-gray-100">
         <div className="flex justify-between items-start">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+          <div className="w-full">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              {editingField === "name" ? (
+                <input
+                  type="text"
+                  autoFocus
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={() => handleProjectUpdate("name", editValue)}
+                  onKeyDown={(e) => handleEditKeyDown(e, "name")}
+                  className="text-3xl font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent px-1 min-w-[200px]"
+                />
+              ) : (
+                <h1
+                  onClick={() => startEditing("name", project.name)}
+                  className="text-3xl font-bold text-gray-900 cursor-pointer hover:bg-gray-50 rounded px-1 -ml-1 transition-colors border border-transparent hover:border-gray-200"
+                  title="Clicca per modificare"
+                >
+                  {project.name}
+                </h1>
+              )}
+
               <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm font-medium rounded-full">
                 {project.code}
               </span>
-              <span className={`px-3 py-1 text-sm font-medium rounded-full ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                {project.status === 'active' ? 'Attivo' : 'Completato'}
-              </span>
+
+              {editingField === "status" ? (
+                <select
+                  autoFocus
+                  value={editValue}
+                  onChange={(e) => {
+                    setEditValue(e.target.value);
+                    handleProjectUpdate("status", e.target.value);
+                  }}
+                  onBlur={() => setEditingField(null)}
+                  className={`px-3 py-1 text-sm font-medium rounded-full outline-none cursor-pointer ${editValue === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                >
+                  <option value="active">Attivo</option>
+                  <option value="completed">Completato</option>
+                </select>
+              ) : (
+                <span
+                  onClick={() => startEditing("status", project.status)}
+                  className={`px-3 py-1 text-sm font-medium rounded-full cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                  title="Clicca per modificare lo stato"
+                >
+                  {project.status === 'active' ? 'Attivo' : 'Completato'}
+                </span>
+              )}
             </div>
-            {project.description && (
-              <p className="text-gray-600 mt-2">{project.description}</p>
+
+            {editingField === "description" ? (
+              <textarea
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => handleProjectUpdate("description", editValue)}
+                onKeyDown={(e) => handleEditKeyDown(e, "description")}
+                className="text-gray-600 mt-2 w-full p-2 border-2 border-blue-500 rounded outline-none resize-y min-h-[80px]"
+              />
+            ) : (
+              <div
+                onClick={() => startEditing("description", project.description)}
+                className="text-gray-600 mt-2 p-2 -mx-2 cursor-pointer hover:bg-gray-50 rounded transition-colors border border-transparent hover:border-gray-200 min-h-[40px]"
+                title="Clicca per modificare la descrizione"
+              >
+                {project.description || <span className="text-gray-400 italic">Aggiungi descrizione...</span>}
+              </div>
             )}
           </div>
         </div>

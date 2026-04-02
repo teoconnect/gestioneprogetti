@@ -19,11 +19,16 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
+    const projectCode = `PRJ-${Date.now()}`;
     const project = await prisma.project.create({
-      data,
+      data: {
+        ...data,
+        code: projectCode,
+      },
     });
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
+    console.error("POST /api/projects error:", error);
     return NextResponse.json(
       { error: "Failed to create project" },
       { status: 500 }
