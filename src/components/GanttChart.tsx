@@ -146,6 +146,9 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
         .gantt-task-done .bar {
           fill: #6b7280 !important;
         }
+        .gantt-container {
+          overflow-y: hidden !important;
+        }
         ${colorStyles}
       `}</style>
       <div className="mb-4 flex gap-2">
