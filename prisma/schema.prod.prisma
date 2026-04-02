@@ -29,6 +29,8 @@ model Task {
   progress     Int        @default(0)
   color        String?
   dependencies String?
+  notificationsEnabled Boolean @default(false)
+  notificationEmail    String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)

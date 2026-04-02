@@ -23,6 +23,8 @@ type Task = {
   progress: number;
   color: string | null;
   dependencies: string | null;
+  notificationsEnabled: boolean;
+  notificationEmail: string | null;
   items: TaskItem[];
 };
 
@@ -58,6 +60,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [taskProgress, setTaskProgress] = useState("0");
   const [taskColor, setTaskColor] = useState("");
   const [taskDependencies, setTaskDependencies] = useState<string[]>([]);
+  const [taskNotificationsEnabled, setTaskNotificationsEnabled] = useState(false);
+  const [taskNotificationEmail, setTaskNotificationEmail] = useState("");
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
@@ -133,6 +137,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskProgress("0");
     setTaskColor("");
     setTaskDependencies([]);
+    setTaskNotificationsEnabled(false);
+    setTaskNotificationEmail("");
     setIsEditingTask(false);
     setEditingTaskId(null);
   };
@@ -156,6 +162,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           progress: taskProgress,
           color: taskColor,
           dependencies: taskDependencies.join(","),
+          notificationsEnabled: taskNotificationsEnabled,
+          notificationEmail: taskNotificationEmail || null,
         }),
       });
       if (res.ok) {
@@ -177,6 +185,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskProgress(task.progress.toString());
     setTaskColor(task.color || "");
     setTaskDependencies(task.dependencies ? task.dependencies.split(",").map(d => d.trim()).filter(Boolean) : []);
+    setTaskNotificationsEnabled(task.notificationsEnabled);
+    setTaskNotificationEmail(task.notificationEmail || "");
     setIsEditingTask(true);
     setEditingTaskId(task.id);
     setShowTaskModal(true);
@@ -611,6 +621,22 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     <input type="text" placeholder="#10b981" value={taskColor} onChange={e => setTaskColor(e.target.value)} className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" />
                   </div>
                 </div>
+                <div>
+                  <label className="flex items-center gap-2 mt-7 mb-1 cursor-pointer">
+                    <input type="checkbox" checked={taskNotificationsEnabled} onChange={e => setTaskNotificationsEnabled(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5" />
+                    <span className="text-sm font-medium text-gray-700">Abilita Notifiche Email</span>
+                  </label>
+                </div>
+              </div>
+
+              {taskNotificationsEnabled && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email per Notifiche</label>
+                  <input required type="email" value={taskNotificationEmail} onChange={e => setTaskNotificationEmail(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="nome@esempio.com" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Seleziona il task padre</label>
                   <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">

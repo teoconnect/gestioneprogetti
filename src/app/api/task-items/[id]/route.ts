@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import path from "path";
+import { sendTaskModificationEmail } from "@/lib/email";
 
 async function deleteFileIfAttachment(type: string, value: string | null) {
   if (type === "attachment" && value) {
@@ -38,7 +39,18 @@ export async function PUT(
     const taskItem = await prisma.taskItem.update({
       where: { id: resolvedParams.id },
       data,
+      include: { task: true },
     });
+
+    if (taskItem.task.notificationsEnabled && taskItem.task.notificationEmail) {
+      await sendTaskModificationEmail(
+        taskItem.task.notificationEmail,
+        taskItem.task.name,
+        taskItem.task.projectId,
+        taskItem.taskId
+      ).catch(e => console.error("Error sending email on task item update:", e));
+    }
+
     return NextResponse.json(taskItem);
   } catch (error) {
     return NextResponse.json(
@@ -67,6 +79,19 @@ export async function DELETE(
     await prisma.taskItem.delete({
       where: { id: resolvedParams.id },
     });
+
+    if (existingItem) {
+      const task = await prisma.task.findUnique({ where: { id: existingItem.taskId } });
+      if (task && task.notificationsEnabled && task.notificationEmail) {
+        await sendTaskModificationEmail(
+          task.notificationEmail,
+          task.name,
+          task.projectId,
+          task.id
+        ).catch(e => console.error("Error sending email on task item delete:", e));
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(

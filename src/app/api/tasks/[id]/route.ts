@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import path from "path";
+import { sendTaskModificationEmail } from "@/lib/email";
 
 export async function PUT(
   request: Request,
@@ -28,6 +29,16 @@ export async function PUT(
       where: { id: resolvedParams.id },
       data: updateData,
     });
+
+    if (task.notificationsEnabled && task.notificationEmail) {
+      await sendTaskModificationEmail(
+        task.notificationEmail,
+        task.name,
+        task.projectId,
+        task.id
+      ).catch(e => console.error("Error sending email on task update:", e));
+    }
+
     return NextResponse.json(task);
   } catch (error) {
     return NextResponse.json(
