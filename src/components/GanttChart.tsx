@@ -97,6 +97,7 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
 
     // Disable automatic cascading of dependent tasks in frappe-gantt
     if (newGantt) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (newGantt as any).update_dependent_tasks = () => {};
 
       // We also need to hook into the drag/resize events if frappe-gantt
@@ -144,6 +145,9 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
         }
         .gantt-task-done .bar {
           fill: #6b7280 !important;
+        }
+        .gantt-container {
+          overflow-y: hidden !important;
         }
         ${colorStyles}
       `}</style>
