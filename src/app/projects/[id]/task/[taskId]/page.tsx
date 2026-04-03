@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Calendar, FileText, Hash, Paperclip, CheckCircle } from "lucide-react";
 
 type TaskItem = {
@@ -29,6 +30,8 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
   const resolvedParams = use(params);
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const isModal = searchParams.get("modal") === "true";
 
   useEffect(() => {
     async function fetchTask() {
@@ -52,10 +55,12 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <Link href={`/projects/${resolvedParams.id}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 transition">
-        <ArrowLeft size={16} className="mr-2" />
-        Torna al Progetto
-      </Link>
+      {!isModal && (
+        <Link href={`/projects/${resolvedParams.id}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 transition">
+          <ArrowLeft size={16} className="mr-2" />
+          Torna al Progetto
+        </Link>
+      )}
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-8 border border-gray-100">
         <div className="flex justify-between items-start mb-4">

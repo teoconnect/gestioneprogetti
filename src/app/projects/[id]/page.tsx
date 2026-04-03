@@ -967,7 +967,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
             </div>
             <div className="flex-1 w-full bg-gray-100">
               <iframe
-                src={`/projects/${project.id}/task/${selectedGanttTaskId}`}
+                src={`/projects/${project.id}/task/${selectedGanttTaskId}?modal=true`}
                 className="w-full h-full border-0"
                 title="Task Details"
               />
