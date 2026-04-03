@@ -478,16 +478,16 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const tasksWithAttachments = project.tasks.filter(t => t.items?.some(i => i.type === 'attachment')).length;
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 transition">
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+      <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4 sm:mb-6 transition">
         <ArrowLeft size={16} className="mr-2" />
         Torna alla Dashboard
       </Link>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8 border border-gray-100">
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8 border border-gray-100">
         <div className="flex justify-between items-start">
           <div className="w-full">
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
               {editingField === "name" ? (
                 <input
                   type="text"
@@ -501,14 +501,14 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               ) : (
                 <h1
                   onClick={() => startEditing("name", project.name)}
-                  className="text-3xl font-bold text-gray-900 cursor-pointer hover:bg-gray-50 rounded px-1 -ml-1 transition-colors border border-transparent hover:border-gray-200"
+                  className="text-2xl sm:text-3xl font-bold text-gray-900 cursor-pointer hover:bg-gray-50 rounded px-1 -ml-1 transition-colors border border-transparent hover:border-gray-200 break-all"
                   title="Clicca per modificare"
                 >
                   {project.name}
                 </h1>
               )}
 
-              <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm font-medium rounded-full">
+              <span className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-600 text-xs sm:text-sm font-medium rounded-full">
                 {project.code}
               </span>
 
@@ -558,7 +558,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100">
           <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-blue-600">Task Totali</p>
@@ -597,24 +597,24 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         <GanttChartWrapper tasks={project.tasks} onTaskUpdate={handleGanttTaskUpdate} onTaskProgressUpdate={handleGanttProgressUpdate} onTaskClick={handleGanttTaskClick} />
       </div>
 
-      <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Task del Progetto</h2>
-        <div className="flex gap-3">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Task del Progetto</h2>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => {
               setDefaultEmail(project?.defaultNotificationEmail || "");
               setShowSettingsModal(true);
             }}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md flex items-center gap-2 transition shadow-sm"
+            className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-md flex items-center justify-center gap-2 transition shadow-sm text-sm sm:text-base"
           >
-            <Settings size={20} />
-            Impostazioni Progetto
+            <Settings size={18} className="sm:w-5 sm:h-5" />
+            Impostazioni
           </button>
           <button
             onClick={openNewTaskModal}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition shadow-sm"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-md flex items-center justify-center gap-2 transition shadow-sm text-sm sm:text-base"
           >
-            <Plus size={20} />
+            <Plus size={18} className="sm:w-5 sm:h-5" />
             Nuovo Task
           </button>
         </div>
@@ -628,12 +628,15 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         ) : (
           project.tasks.map((task) => (
             <div key={task.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <div>
+              <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+                <div className="w-full">
                   <h3 className="text-lg font-bold text-gray-900">{task.name}</h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                    <span>Inizio: {new Date(task.startDate).toLocaleDateString()}</span>
-                    <span>Fine: {new Date(task.endDate).toLocaleDateString()}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 mt-2 sm:mt-1">
+                    <div className="flex gap-2">
+                      <span>Inizio: {new Date(task.startDate).toLocaleDateString()}</span>
+                      <span className="hidden sm:inline">|</span>
+                      <span>Fine: {new Date(task.endDate).toLocaleDateString()}</span>
+                    </div>
                     <div className="flex items-center gap-1 font-semibold text-gray-700">
                       Stato:
                       {editingTaskStatusId === task.id ? (
@@ -688,23 +691,23 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   </div>
                   {task.description && <p className="text-gray-600 mt-2 text-sm">{task.description}</p>}
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => openEditTaskModal(task)}
-                    className="text-gray-600 hover:bg-gray-200 p-1.5 rounded-md transition"
-                    title="Modifica Task"
-                  >
-                    <Edit2 size={18} />
-                  </button>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-0 pt-3 sm:pt-0 border-gray-200 mt-2 sm:mt-0">
                   <button
                     onClick={() => {
                       resetItemForm();
                       setActiveTaskId(task.id);
                       setShowItemModal(true);
                     }}
-                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium bg-blue-50 px-3 py-1.5 rounded-md transition"
+                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs sm:text-sm font-medium bg-blue-50 px-2 sm:px-3 py-1.5 rounded-md transition mr-auto sm:mr-0"
                   >
-                    <Plus size={16} /> Aggiungi Riga
+                    <Plus size={16} /> <span className="hidden sm:inline">Aggiungi Riga</span><span className="sm:hidden">Riga</span>
+                  </button>
+                  <button
+                    onClick={() => openEditTaskModal(task)}
+                    className="text-gray-600 hover:bg-gray-200 p-1.5 rounded-md transition"
+                    title="Modifica Task"
+                  >
+                    <Edit2 size={18} />
                   </button>
                   <button onClick={() => handleDeleteTask(task.id)} className="text-red-600 hover:bg-red-50 p-1.5 rounded-md transition">
                     <Trash2 size={18} />
@@ -718,27 +721,27 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 ) : (
                   <div className="grid gap-3">
                     {task.items.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center p-3 rounded bg-gray-50 border border-gray-100 hover:border-gray-300 transition-colors">
-                        <div className="flex items-start gap-4">
-                          <div className="mt-1 text-gray-400">
+                      <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded bg-gray-50 border border-gray-100 hover:border-gray-300 transition-colors gap-3 sm:gap-0">
+                        <div className="flex items-start gap-3 sm:gap-4 w-full">
+                          <div className="mt-1 text-gray-400 shrink-0">
                             {item.type === "text" && <FileText size={18} />}
                             {item.type === "number" && <Hash size={18} />}
                             {item.type === "date" && <Calendar size={18} />}
                             {item.type === "attachment" && <Paperclip size={18} />}
                           </div>
-                          <div>
-                            <div className="font-medium text-gray-900 flex items-center gap-2">
-                              {item.name}
-                              <span className="text-[10px] uppercase tracking-wider bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                              <span className="truncate">{item.name}</span>
+                              <span className="text-[10px] uppercase tracking-wider bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded shrink-0">
                                 {item.type}
                               </span>
                             </div>
-                            {item.description && <div className="text-sm text-gray-500">{item.description}</div>}
+                            {item.description && <div className="text-xs sm:text-sm text-gray-500 mt-0.5 break-words">{item.description}</div>}
 
-                            <div className="mt-1 text-sm font-medium text-blue-700">
+                            <div className="mt-1 text-xs sm:text-sm font-medium text-blue-700">
                               {item.type === "attachment" ? (
                                 item.value ? (
-                                  <a href={item.value} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+                                  <a href={item.value} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1 break-all">
                                     Scarica File
                                   </a>
                                 ) : (
@@ -756,7 +759,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                                 />
                               ) : (
                                 <span
-                                  className="cursor-pointer hover:underline"
+                                  className="cursor-pointer hover:underline break-all"
                                   onClick={() => {
                                     setEditingInlineItemId(item.id);
                                     setInlineItemValue(item.value || "");
@@ -769,11 +772,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <button onClick={() => openEditItemModal(item, task.id)} className="text-gray-400 hover:text-blue-600 transition-colors p-2" title="Modifica Riga">
+                        <div className="flex gap-1 w-full sm:w-auto justify-end border-t sm:border-0 border-gray-200 pt-2 sm:pt-0 mt-1 sm:mt-0 shrink-0">
+                          <button onClick={() => openEditItemModal(item, task.id)} className="text-gray-500 hover:text-blue-600 transition-colors p-2 bg-gray-100 sm:bg-transparent rounded" title="Modifica Riga">
                             <Edit2 size={16} />
                           </button>
-                          <button onClick={() => handleDeleteItem(item.id)} className="text-gray-400 hover:text-red-600 transition-colors p-2" title="Elimina Riga">
+                          <button onClick={() => handleDeleteItem(item.id)} className="text-gray-500 hover:text-red-600 transition-colors p-2 bg-gray-100 sm:bg-transparent rounded" title="Elimina Riga">
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -801,7 +804,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
                 <textarea value={taskDesc} onChange={e => setTaskDesc(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" rows={3}></textarea>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Inizio</label>
                   <input required type="date" value={taskStart} onChange={e => setTaskStart(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
@@ -811,7 +814,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   <input required type="date" value={taskEnd} onChange={e => setTaskEnd(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Stato</label>
                   <select value={taskStatus} onChange={e => setTaskStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white">
@@ -825,7 +828,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   <input type="number" min="0" max="100" value={taskProgress} onChange={e => setTaskProgress(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Colore (es. #ff0000)</label>
                   <div className="flex gap-2">
@@ -834,9 +837,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 mt-7 mb-1 cursor-pointer">
-                    <input type="checkbox" checked={taskNotificationsEnabled} onChange={e => setTaskNotificationsEnabled(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5" />
-                    <span className="text-sm font-medium text-gray-700">Abilita Notifiche Email</span>
+                  <label className="flex items-center gap-2 sm:mt-7 mb-1 cursor-pointer">
+                    <input type="checkbox" checked={taskNotificationsEnabled} onChange={e => setTaskNotificationsEnabled(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5 shrink-0" />
+                    <span className="text-sm font-medium text-gray-700 line-clamp-2">Abilita Notifiche Email</span>
                   </label>
                 </div>
               </div>
