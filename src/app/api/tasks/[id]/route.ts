@@ -70,6 +70,15 @@ export async function PUT(
       where: { id: resolvedParams.id }
     });
 
+    // Gestione automatica del progresso in base allo stato
+    if (originalTask && updateData.status !== undefined && updateData.status !== originalTask.status) {
+      if (updateData.status === "DONE") {
+        updateData.progress = 100;
+      } else if (originalTask.status === "DONE") {
+        updateData.progress = 0;
+      }
+    }
+
     const task = await prisma.task.update({
       where: { id: resolvedParams.id },
       data: updateData,
