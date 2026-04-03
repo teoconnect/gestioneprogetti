@@ -89,6 +89,14 @@ export default function Dashboard() {
     }
   };
 
+  const filteredProjects = projects.filter((p) => {
+    const matchesSearch =
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.code.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === "all" || p.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-5xl">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -139,61 +147,98 @@ export default function Dashboard() {
       {loading ? (
         <div className="text-center py-10">Caricamento in corso...</div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Codice</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stato</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Azioni</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {projects.length === 0 ? (
+        <>
+          {/* Visualizzazione a Tabella per Desktop */}
+          <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                    Nessun progetto trovato. Creane uno nuovo.
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Codice</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stato</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Azioni</th>
                 </tr>
-              ) : (
-                projects
-                  .filter((p) => {
-                    const matchesSearch =
-                      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      p.code.toLowerCase().includes(searchQuery.toLowerCase());
-                    const matchesStatus = filterStatus === "all" || p.status === filterStatus;
-                    return matchesSearch && matchesStatus;
-                  })
-                  .map((project) => (
-                  <tr key={project.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {project.code}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {project.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                        {project.status === 'active' ? 'Attivo' : 'Completato'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-3">
-                        <Link href={`/projects/${project.id}`} className="text-indigo-600 hover:text-indigo-900">
-                          Dettagli
-                        </Link>
-                        <button onClick={() => handleDelete(project.id)} className="text-red-600 hover:text-red-900">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {projects.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                      Nessun progetto trovato. Creane uno nuovo.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : filteredProjects.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                      Nessun progetto corrisponde alla ricerca.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProjects.map((project) => (
+                    <tr key={project.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {project.code}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {project.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {project.status === 'active' ? 'Attivo' : 'Completato'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-3">
+                          <Link href={`/projects/${project.id}`} className="text-indigo-600 hover:text-indigo-900">
+                            Dettagli
+                          </Link>
+                          <button onClick={() => handleDelete(project.id)} className="text-red-600 hover:text-red-900">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Visualizzazione a Card per Mobile */}
+          <div className="md:hidden space-y-4">
+            {projects.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+                Nessun progetto trovato. Creane uno nuovo.
+              </div>
+            ) : filteredProjects.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+                Nessun progetto corrisponde alla ricerca.
+              </div>
+            ) : (
+              filteredProjects.map((project) => (
+                <div key={project.id} className="bg-white rounded-lg shadow p-4 border border-gray-100 flex flex-col">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <span className="text-xs font-semibold text-gray-500 uppercase">{project.code}</span>
+                      <h3 className="text-lg font-medium text-gray-900 leading-tight mt-1">{project.name}</h3>
+                    </div>
+                    <span className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {project.status === 'active' ? 'Attivo' : 'Completato'}
+                    </span>
+                  </div>
+                  <div className="flex justify-end gap-4 mt-auto pt-4 border-t border-gray-100">
+                    <Link href={`/projects/${project.id}`} className="text-indigo-600 hover:text-indigo-900 font-medium text-sm flex items-center">
+                      Dettagli
+                    </Link>
+                    <button onClick={() => handleDelete(project.id)} className="text-red-600 hover:text-red-900 flex items-center gap-1 text-sm font-medium">
+                      <Trash2 size={16} />
+                      Elimina
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
       )}
 
       {showModal && (
