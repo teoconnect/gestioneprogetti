@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import path from "path";
 import { sendTaskModificationEmail } from "@/lib/email";
+import { cookies } from "next/headers";
+import { verifyAuth } from "@/lib/auth";
 
 async function deleteFileIfAttachment(type: string, value: string | null) {
   if (type === "attachment" && value) {
@@ -26,6 +28,21 @@ export async function PUT(
     const resolvedParams = await params;
     const data = await request.json();
 
+    // Recupera l'utente
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth-token")?.value;
+    let username = "Utente sconosciuto";
+    if (token) {
+      try {
+        const payload = await verifyAuth(token);
+        if (payload && typeof payload.username === "string") {
+          username = payload.username;
+        }
+      } catch (e) {
+        // Ignora
+      }
+    }
+
     // Recupera l'elemento esistente per controllare se è un allegato e se il valore sta cambiando
     const existingItem = await prisma.taskItem.findUnique({
       where: { id: resolvedParams.id },
@@ -47,7 +64,9 @@ export async function PUT(
         taskItem.task.notificationEmail,
         taskItem.task.name,
         taskItem.task.projectId,
-        taskItem.taskId
+        taskItem.taskId,
+        username,
+        [`Riga dettaglio modificata: ${taskItem.name}`]
       ).catch(e => console.error("Error sending email on task item update:", e));
     }
 
@@ -82,12 +101,30 @@ export async function DELETE(
 
     if (existingItem) {
       const task = await prisma.task.findUnique({ where: { id: existingItem.taskId } });
+
+      // Recupera l'utente
+      const cookieStore = await cookies();
+      const token = cookieStore.get("auth-token")?.value;
+      let username = "Utente sconosciuto";
+      if (token) {
+        try {
+          const payload = await verifyAuth(token);
+          if (payload && typeof payload.username === "string") {
+            username = payload.username;
+          }
+        } catch (e) {
+          // Ignora
+        }
+      }
+
       if (task && task.notificationsEnabled && task.notificationEmail) {
         await sendTaskModificationEmail(
           task.notificationEmail,
           task.name,
           task.projectId,
-          task.id
+          task.id,
+          username,
+          [`Riga dettaglio eliminata: ${existingItem.name}`]
         ).catch(e => console.error("Error sending email on task item delete:", e));
       }
     }

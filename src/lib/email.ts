@@ -40,15 +40,32 @@ export const sendTaskModificationEmail = async (
   email: string,
   taskName: string,
   projectId: string,
-  taskId: string
+  taskId: string,
+  username?: string,
+  changedFields?: string[]
 ) => {
   const appUrl = process.env.APP_URL || 'http://localhost:3000';
   const taskUrl = `${appUrl}/projects/${projectId}/task/${taskId}`;
 
   const subject = `Aggiornamento Task: ${taskName}`;
+
+  let changesHtml = '';
+  if (changedFields && changedFields.length > 0) {
+    changesHtml = `
+      <h3>Dettaglio Modifiche:</h3>
+      <ul>
+        ${changedFields.map(field => `<li>${field}</li>`).join('')}
+      </ul>
+    `;
+  }
+
+  const userHtml = username ? `<p><strong>Modificato da:</strong> ${username}</p>` : '';
+
   const html = `
     <h2>Il task "${taskName}" è stato modificato</h2>
+    ${userHtml}
     <p>Sono state apportate delle modifiche al task o alle sue informazioni.</p>
+    ${changesHtml}
     <p><a href="${taskUrl}">Clicca qui per visualizzare il task aggiornato</a></p>
   `;
 
