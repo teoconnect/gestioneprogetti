@@ -860,7 +860,21 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Stato</label>
-                  <select value={taskStatus} onChange={e => setTaskStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white">
+                  <select
+                    value={taskStatus}
+                    onChange={e => {
+                      const newStatus = e.target.value;
+                      setTaskStatus(newStatus);
+                      if (newStatus === "DONE") {
+                        setTaskProgress("100");
+                      } else if (newStatus === "TODO") {
+                        setTaskProgress("0");
+                      } else if (newStatus === "IN_PROGRESS") {
+                        setTaskProgress("50");
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+                  >
                     <option value="TODO">Da fare</option>
                     <option value="IN_PROGRESS">In corso</option>
                     <option value="DONE">Completato</option>
@@ -868,7 +882,24 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Progresso (%)</label>
-                  <input type="number" min="0" max="100" value={taskProgress} onChange={e => setTaskProgress(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={taskProgress}
+                    onChange={e => {
+                      const newProgress = parseInt(e.target.value, 10);
+                      setTaskProgress(e.target.value);
+                      if (newProgress === 100) {
+                        setTaskStatus("DONE");
+                      } else if (newProgress === 0) {
+                        setTaskStatus("TODO");
+                      } else if (newProgress >= 1 && newProgress <= 99) {
+                        setTaskStatus("IN_PROGRESS");
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
