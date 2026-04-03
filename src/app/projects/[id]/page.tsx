@@ -720,12 +720,14 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                             {item.type === "attachment" && <Paperclip size={18} />}
                           </div>
                           <div>
+{/* rimosso tipo elemento dalla vista
                             <div className="font-medium text-gray-900 flex items-center gap-2">
                               {item.name}
                               <span className="text-[10px] uppercase tracking-wider bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
                                 {item.type}
                               </span>
                             </div>
+*/}
                             {item.description && <div className="text-sm text-gray-500">{item.description}</div>}
 
                             <div className="mt-1 text-sm font-medium text-blue-700">
