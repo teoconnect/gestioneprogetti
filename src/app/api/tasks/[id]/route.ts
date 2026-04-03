@@ -4,6 +4,30 @@ import { unlink } from "fs/promises";
 import path from "path";
 import { sendTaskModificationEmail } from "@/lib/email";
 
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const resolvedParams = await params;
+    const task = await prisma.task.findUnique({
+      where: { id: resolvedParams.id },
+      include: {
+        items: true,
+      },
+    });
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    return NextResponse.json(task);
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to fetch task" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -11,7 +35,6 @@ export async function PUT(
   try {
     const resolvedParams = await params;
     const data = await request.json();
-    console.log(`[API PUT] Task ${resolvedParams.id} data received:`, JSON.stringify(data));
     const updateData = { ...data };
 
     if (updateData.startDate) {
