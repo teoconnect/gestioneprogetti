@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       value: token,
       httpOnly: true,
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // Forzato a false per permettere i test su rete locale HTTP
       maxAge: 60 * 60 * 24, // 1 day
     });
 
