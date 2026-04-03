@@ -1,0 +1,41 @@
+
+> temp_dir@0.1.0 build
+> next build
+
+▲ Next.js 16.2.1 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 6.5s
+  Running TypeScript ...
+  Finished TypeScript in 4.8s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/11) ...
+  Generating static pages using 3 workers (2/11)
+  Generating static pages using 3 workers (5/11)
+  Generating static pages using 3 workers (8/11)
+✓ Generating static pages using 3 workers (11/11) in 264ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/projects
+├ ƒ /api/projects/[id]
+├ ƒ /api/projects/[id]/test-email
+├ ƒ /api/task-items
+├ ƒ /api/task-items/[id]
+├ ƒ /api/tasks
+├ ƒ /api/tasks/[id]
+├ ƒ /api/uploads
+├ ○ /login
+├ ƒ /projects/[id]
+└ ƒ /projects/[id]/task/[taskId]
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

@@ -3,6 +3,32 @@ import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import path from "path";
 import { sendTaskModificationEmail } from "@/lib/email";
+import { cookies } from "next/headers";
+import { verifyAuth } from "@/lib/auth";
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const resolvedParams = await params;
+    const task = await prisma.task.findUnique({
+      where: { id: resolvedParams.id },
+      include: {
+        items: true,
+      },
+    });
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    return NextResponse.json(task);
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to fetch task" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function PUT(
   request: Request,
@@ -11,7 +37,21 @@ export async function PUT(
   try {
     const resolvedParams = await params;
     const data = await request.json();
-    console.log(`[API PUT] Task ${resolvedParams.id} data received:`, JSON.stringify(data));
+
+    // Recupera l'utente
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth-token")?.value;
+    let username = "Utente sconosciuto";
+    if (token) {
+      try {
+        const payload = await verifyAuth(token);
+        if (payload && typeof payload.username === "string") {
+          username = payload.username;
+        }
+      } catch (e) {
+        // Ignora
+      }
+    }
     const updateData = { ...data };
 
     if (updateData.startDate) {
@@ -25,17 +65,39 @@ export async function PUT(
       updateData.progress = parseInt(updateData.progress, 10);
     }
 
+    // Recupera il task originale per confrontare i campi
+    const originalTask = await prisma.task.findUnique({
+      where: { id: resolvedParams.id }
+    });
+
     const task = await prisma.task.update({
       where: { id: resolvedParams.id },
       data: updateData,
     });
 
-    if (task.notificationsEnabled && task.notificationEmail) {
+    // Trova le differenze
+    const changedFields: string[] = [];
+    if (originalTask) {
+      if (originalTask.name !== task.name) changedFields.push("Nome");
+      if (originalTask.description !== task.description) changedFields.push("Descrizione");
+      if (new Date(originalTask.startDate).toISOString().split('T')[0] !== new Date(task.startDate).toISOString().split('T')[0]) changedFields.push("Data Inizio");
+      if (new Date(originalTask.endDate).toISOString().split('T')[0] !== new Date(task.endDate).toISOString().split('T')[0]) changedFields.push("Data Fine");
+      if (originalTask.status !== task.status) changedFields.push("Stato");
+      if (originalTask.progress !== task.progress) changedFields.push("Progresso");
+      if (originalTask.color !== task.color) changedFields.push("Colore");
+      if (originalTask.dependencies !== task.dependencies) changedFields.push("Dipendenze");
+    } else {
+      changedFields.push("Task aggiornato in modo massivo");
+    }
+
+    if (task.notificationsEnabled && task.notificationEmail && changedFields.length > 0) {
       await sendTaskModificationEmail(
         task.notificationEmail,
         task.name,
         task.projectId,
-        task.id
+        task.id,
+        username,
+        changedFields
       ).catch(e => console.error("Error sending email on task update:", e));
     }
 
