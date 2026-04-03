@@ -28,9 +28,31 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [ganttInst, setGanttInst] = useState<any>(null);
+  const isDraggingRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!containerRef.current || tasks.length === 0) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      startPosRef.current = { x: e.clientX, y: e.clientY };
+      isDraggingRef.current = false;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (
+        Math.abs(e.clientX - startPosRef.current.x) > 3 ||
+        Math.abs(e.clientY - startPosRef.current.y) > 3
+      ) {
+        isDraggingRef.current = true;
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener("mousedown", handleMouseDown, true);
+      container.addEventListener("mousemove", handleMouseMove, true);
+    }
 
     const formattedTasks: GanttTask[] = tasks.map((t) => {
       const startDate = new Date(t.startDate);
@@ -96,6 +118,7 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       on_click: (task: any) => {
+        if (isDraggingRef.current) return;
         const originalTask = tasks.find((t) => t.id === task.id);
         if (originalTask && onTaskClick) {
           onTaskClick(originalTask);
@@ -122,6 +145,8 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
     return () => {
       if (cleanupRef) {
         cleanupRef.innerHTML = "";
+        cleanupRef.removeEventListener("mousedown", handleMouseDown, true);
+        cleanupRef.removeEventListener("mousemove", handleMouseMove, true);
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
