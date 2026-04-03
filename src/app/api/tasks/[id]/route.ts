@@ -70,12 +70,30 @@ export async function PUT(
       where: { id: resolvedParams.id }
     });
 
-    // Gestione automatica del progresso in base allo stato
-    if (originalTask && updateData.status !== undefined && updateData.status !== originalTask.status) {
-      if (updateData.status === "DONE") {
-        updateData.progress = 100;
-      } else if (originalTask.status === "DONE") {
-        updateData.progress = 0;
+    // Gestione automatica bidirezionale dello stato e del progresso
+    if (originalTask) {
+      const statusChanged = updateData.status !== undefined && updateData.status !== originalTask.status;
+      const progressChanged = updateData.progress !== undefined && updateData.progress !== originalTask.progress;
+
+      if (statusChanged && !progressChanged) {
+        // Se cambia lo stato, aggiorniamo il progresso
+        if (updateData.status === "DONE") {
+          updateData.progress = 100;
+        } else if (updateData.status === "TODO") {
+          updateData.progress = 0;
+        } else if (updateData.status === "IN_PROGRESS") {
+          updateData.progress = 50;
+        }
+      } else if (progressChanged) {
+        // Se cambia il progresso, aggiorniamo lo stato
+        const progress = updateData.progress;
+        if (progress === 100) {
+          updateData.status = "DONE";
+        } else if (progress === 0) {
+          updateData.status = "TODO";
+        } else if (progress >= 1 && progress <= 99) {
+          updateData.status = "IN_PROGRESS";
+        }
       }
     }
 
