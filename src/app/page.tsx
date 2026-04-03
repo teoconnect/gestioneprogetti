@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Trash2, LogOut } from "lucide-react";
+import { calculateProgress } from "@/lib/utils";
 
 type Project = {
   id: string;
@@ -11,6 +12,7 @@ type Project = {
   description: string | null;
   status: string;
   createdAt: string;
+  tasks: { progress: number }[];
 };
 
 export default function Dashboard() {
@@ -98,13 +100,16 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-5xl">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Progetti</h1>
+    <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Progetti</h1>
+          <p className="text-gray-500 mt-1 text-sm sm:text-base">Gestisci e monitora i tuoi flussi di lavoro</p>
+        </div>
         <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <button
             onClick={() => setShowModal(true)}
-            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-md flex items-center justify-center gap-2 transition text-sm sm:text-base"
+            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md text-sm sm:text-base font-semibold"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">Nuovo Progetto</span>
@@ -112,7 +117,7 @@ export default function Dashboard() {
           </button>
           <button
             onClick={handleLogout}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 sm:px-4 py-2 rounded-md flex items-center justify-center gap-2 transition text-sm sm:text-base"
+            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md text-sm sm:text-base font-medium"
             title="Logout"
           >
             <LogOut size={20} />
@@ -121,21 +126,21 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-        <div className="flex-1 w-full">
+      <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
+        <div className="flex-1 relative">
           <input
             type="text"
             placeholder="Cerca per nome o codice..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="w-full border-none rounded-xl px-5 py-3 focus:ring-2 focus:ring-blue-500/20 outline-none bg-white shadow-sm placeholder:text-gray-400"
           />
         </div>
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-56">
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+            className="w-full border-none rounded-xl px-5 py-3 focus:ring-2 focus:ring-blue-500/20 outline-none bg-white shadow-sm cursor-pointer appearance-none text-gray-700"
           >
             <option value="all">Tutti gli stati</option>
             <option value="active">Attivo</option>
@@ -145,125 +150,168 @@ export default function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="text-center py-10">Caricamento in corso...</div>
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 animate-pulse">
+          <div className="w-12 h-12 bg-gray-200 rounded-full mb-4"></div>
+          <p className="font-medium text-lg">Caricamento in corso...</p>
+        </div>
       ) : (
         <>
-          {/* Visualizzazione a Tabella per Desktop */}
-          <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Codice</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stato</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Azioni</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {projects.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                      Nessun progetto trovato. Creane uno nuovo.
-                    </td>
-                  </tr>
-                ) : filteredProjects.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                      Nessun progetto corrisponde alla ricerca.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredProjects.map((project) => (
-                    <tr key={project.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {project.code}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {project.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {project.status === 'active' ? 'Attivo' : 'Completato'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end gap-3">
-                          <Link href={`/projects/${project.id}`} className="text-indigo-600 hover:text-indigo-900">
-                            Dettagli
-                          </Link>
-                          <button onClick={() => handleDelete(project.id)} className="text-red-600 hover:text-red-900">
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Visualizzazione a Card per Mobile */}
-          <div className="md:hidden space-y-4">
+          {/* Visualizzazione Desktop */}
+          <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {projects.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
-                Nessun progetto trovato. Creane uno nuovo.
+              <div className="col-span-full bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
+                <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                  <Plus className="text-gray-300" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">Nessun progetto trovato</h3>
+                <p className="text-gray-500 mb-6 max-w-xs mx-auto">Inizia creando il tuo primo progetto per organizzare i tuoi task.</p>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-xl font-semibold hover:bg-blue-700 transition"
+                >
+                  Crea Progetto
+                </button>
               </div>
             ) : filteredProjects.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+              <div className="col-span-full text-center py-20 text-gray-500 italic bg-gray-50 rounded-2xl">
                 Nessun progetto corrisponde alla ricerca.
               </div>
             ) : (
-              filteredProjects.map((project) => (
-                <div key={project.id} className="bg-white rounded-lg shadow p-4 border border-gray-100 flex flex-col">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-xs font-semibold text-gray-500 uppercase">{project.code}</span>
-                      <h3 className="text-lg font-medium text-gray-900 leading-tight mt-1">{project.name}</h3>
+              filteredProjects.map((project) => {
+                const progress = calculateProgress(project.tasks);
+                return (
+                  <div key={project.id} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 p-6 flex flex-col relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 transition-all duration-300 group-hover:w-3"></div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1 pr-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">{project.code}</span>
+                          <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${project.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'}`}>
+                            {project.status === 'active' ? 'Attivo' : 'Completato'}
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{project.name}</h3>
+                      </div>
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => { e.preventDefault(); handleDelete(project.id); }}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Elimina"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </div>
-                    <span className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {project.status === 'active' ? 'Attivo' : 'Completato'}
-                    </span>
-                  </div>
-                  <div className="flex justify-end gap-4 mt-auto pt-4 border-t border-gray-100">
-                    <Link href={`/projects/${project.id}`} className="text-indigo-600 hover:text-indigo-900 font-medium text-sm flex items-center">
-                      Dettagli
+
+                    <p className="text-gray-500 text-sm mb-6 line-clamp-2 h-10 flex-1">
+                      {project.description || <span className="italic text-gray-300">Nessuna descrizione fornita.</span>}
+                    </p>
+
+                    <div className="space-y-2 mb-6">
+                      <div className="flex justify-between items-end text-sm">
+                        <span className="font-semibold text-gray-700">Completamento</span>
+                        <span className="text-blue-600 font-bold">{progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-blue-600 h-full transition-all duration-500 rounded-full"
+                          style={{ width: `${progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="mt-auto w-full text-center bg-gray-50 hover:bg-blue-600 hover:text-white text-gray-700 font-bold py-3 rounded-xl transition-all duration-200"
+                    >
+                      Vai al Progetto
                     </Link>
-                    <button onClick={() => handleDelete(project.id)} className="text-red-600 hover:text-red-900 flex items-center gap-1 text-sm font-medium">
-                      <Trash2 size={16} />
-                      Elimina
-                    </button>
                   </div>
-                </div>
-              ))
+                );
+              })
+            )}
+          </div>
+
+          {/* Visualizzazione Mobile */}
+          <div className="md:hidden space-y-4">
+            {projects.length === 0 ? (
+              <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-8 text-center">
+                <p className="text-gray-500">Nessun progetto trovato.</p>
+              </div>
+            ) : filteredProjects.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-500">
+                Nessun progetto corrisponde alla ricerca.
+              </div>
+            ) : (
+              filteredProjects.map((project) => {
+                const progress = calculateProgress(project.tasks);
+                return (
+                  <Link key={project.id} href={`/projects/${project.id}`} className="block">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col active:scale-[0.98] transition-transform">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{project.code}</span>
+                          <h3 className="text-lg font-bold text-gray-900 leading-tight">{project.name}</h3>
+                        </div>
+                        <span className={`px-2 py-1 inline-flex text-[10px] font-bold uppercase rounded ${project.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'}`}>
+                          {project.status === 'active' ? 'Attivo' : 'Completato'}
+                        </span>
+                      </div>
+
+                      <div className="mb-4">
+                        <div className="flex justify-between items-end text-xs mb-1">
+                          <span className="text-gray-500">Progresso</span>
+                          <span className="text-blue-600 font-bold">{progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-blue-600 h-full rounded-full"
+                            style={{ width: `${progress}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-50">
+                        <span className="text-blue-600 text-xs font-bold uppercase tracking-wider">Visualizza Dettagli</span>
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(project.id); }}
+                          className="text-gray-400 hover:text-red-600 p-1"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })
             )}
           </div>
         </>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Nuovo Progetto</h2>
-            <form onSubmit={handleCreateProject} className="space-y-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 tracking-tight">Nuovo Progetto</h2>
+            <form onSubmit={handleCreateProject} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nome</label>
-                <input required type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2" />
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nome Progetto</label>
+                <input required type="text" value={name} onChange={e => setName(e.target.value)} placeholder="es. Ristrutturazione Soggiorno" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Descrizione</label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2" rows={3}></textarea>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Descrizione</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Breve descrizione degli obiettivi..." className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-none placeholder:text-gray-400" rows={3}></textarea>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Stato</label>
-                <select value={status} onChange={e => setStatus(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Stato Iniziale</label>
+                <select value={status} onChange={e => setStatus(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all bg-white cursor-pointer appearance-none">
                   <option value="active">Attivo</option>
                   <option value="completed">Completato</option>
                 </select>
               </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-50">Annulla</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Salva</button>
+              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-50">
+                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 font-semibold transition-all">Annulla</button>
+                <button type="submit" className="px-8 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0">Salva Progetto</button>
               </div>
             </form>
           </div>
