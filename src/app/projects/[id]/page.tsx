@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings } from "lucide-react";
+import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings, ChevronUp, ChevronDown } from "lucide-react";
 import GanttChartWrapper from "@/components/GanttChartWrapper";
 
 type TaskItem = {
@@ -90,6 +90,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   // Gantt Click modal state
   const [selectedGanttTaskId, setSelectedGanttTaskId] = useState<string | null>(null);
+
+  // Gantt Visibility state
+  const [isGanttVisible, setIsGanttVisible] = useState(true);
 
   // Gantt drag state refs
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -589,12 +592,24 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Calendar size={24} className="text-blue-600" />
-          Gantt del Progetto
-        </h2>
-        <GanttChartWrapper tasks={project.tasks} onTaskUpdate={handleGanttTaskUpdate} onTaskProgressUpdate={handleGanttProgressUpdate} onTaskClick={handleGanttTaskClick} />
+      <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div
+          className="bg-gray-50 px-4 sm:px-6 py-4 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+          onClick={() => setIsGanttVisible(!isGanttVisible)}
+        >
+          <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+            <Calendar size={24} className="text-blue-600" />
+            Gantt del Progetto
+          </h2>
+          <button className="text-gray-500 hover:text-gray-700 focus:outline-none">
+            {isGanttVisible ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+          </button>
+        </div>
+        {isGanttVisible && (
+          <div className="p-4 sm:p-6">
+            <GanttChartWrapper tasks={project.tasks} onTaskUpdate={handleGanttTaskUpdate} onTaskProgressUpdate={handleGanttProgressUpdate} onTaskClick={handleGanttTaskClick} />
+          </div>
+        )}
       </div>
 
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
