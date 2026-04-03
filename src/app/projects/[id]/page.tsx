@@ -4,6 +4,7 @@ import { useEffect, useState, use, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings, ChevronUp, ChevronDown } from "lucide-react";
 import GanttChartWrapper from "@/components/GanttChartWrapper";
+import { calculateProgress } from "@/lib/utils";
 
 type TaskItem = {
   id: string;
@@ -480,41 +481,23 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const overdueTasks = project.tasks.filter(t => new Date(t.endDate) < new Date()).length;
   const tasksWithAttachments = project.tasks.filter(t => t.items?.some(i => i.type === 'attachment')).length;
 
+  const avgProgress = calculateProgress(project.tasks);
+
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
-      <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4 sm:mb-6 transition">
-        <ArrowLeft size={16} className="mr-2" />
+      <Link href="/" className="group inline-flex items-center text-gray-500 hover:text-blue-600 mb-6 transition-all font-semibold">
+        <ArrowLeft size={18} className="mr-2 group-hover:-translate-x-1 transition-transform" />
         Torna alla Dashboard
       </Link>
 
-      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8 border border-gray-100">
-        <div className="flex justify-between items-start">
-          <div className="w-full">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
-              {editingField === "name" ? (
-                <input
-                  type="text"
-                  autoFocus
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={() => handleProjectUpdate("name", editValue)}
-                  onKeyDown={(e) => handleEditKeyDown(e, "name")}
-                  className="text-3xl font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent px-1 min-w-[200px]"
-                />
-              ) : (
-                <h1
-                  onClick={() => startEditing("name", project.name)}
-                  className="text-2xl sm:text-3xl font-bold text-gray-900 cursor-pointer hover:bg-gray-50 rounded px-1 -ml-1 transition-colors border border-transparent hover:border-gray-200 break-all"
-                  title="Clicca per modificare"
-                >
-                  {project.name}
-                </h1>
-              )}
-
-              <span className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-600 text-xs sm:text-sm font-medium rounded-full">
+      <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-6 sm:p-8 mb-8 border border-gray-100 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full -mr-32 -mt-32 opacity-50"></div>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
+              <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-lg tracking-widest uppercase">
                 {project.code}
               </span>
-
               {editingField === "status" ? (
                 <select
                   autoFocus
@@ -524,7 +507,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     handleProjectUpdate("status", e.target.value);
                   }}
                   onBlur={() => setEditingField(null)}
-                  className={`px-3 py-1 text-sm font-medium rounded-full outline-none cursor-pointer ${editValue === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                  className={`px-3 py-1 text-xs font-bold uppercase rounded-lg outline-none cursor-pointer border-2 border-blue-500 bg-white ${editValue === 'active' ? 'text-green-600' : 'text-gray-600'}`}
                 >
                   <option value="active">Attivo</option>
                   <option value="completed">Completato</option>
@@ -532,13 +515,33 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               ) : (
                 <span
                   onClick={() => startEditing("status", project.status)}
-                  className={`px-3 py-1 text-sm font-medium rounded-full cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all ${project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                  className={`px-3 py-1 text-xs font-bold uppercase rounded-lg cursor-pointer hover:ring-4 hover:ring-blue-100 transition-all ${project.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'}`}
                   title="Clicca per modificare lo stato"
                 >
                   {project.status === 'active' ? 'Attivo' : 'Completato'}
                 </span>
               )}
             </div>
+
+            {editingField === "name" ? (
+              <input
+                type="text"
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => handleProjectUpdate("name", editValue)}
+                onKeyDown={(e) => handleEditKeyDown(e, "name")}
+                className="text-3xl sm:text-4xl font-black text-gray-900 border-b-4 border-blue-500 outline-none bg-transparent w-full"
+              />
+            ) : (
+              <h1
+                onClick={() => startEditing("name", project.name)}
+                className="text-3xl sm:text-4xl font-black text-gray-900 cursor-pointer hover:text-blue-600 transition-colors break-all leading-tight"
+                title="Clicca per modificare"
+              >
+                {project.name}
+              </h1>
+            )}
 
             {editingField === "description" ? (
               <textarea
@@ -547,46 +550,61 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 onChange={(e) => setEditValue(e.target.value)}
                 onBlur={() => handleProjectUpdate("description", editValue)}
                 onKeyDown={(e) => handleEditKeyDown(e, "description")}
-                className="text-gray-600 mt-2 w-full p-2 border-2 border-blue-500 rounded outline-none resize-y min-h-[80px]"
+                className="text-gray-500 mt-4 w-full p-4 border-2 border-blue-500 rounded-xl outline-none resize-none bg-gray-50 text-lg"
+                rows={2}
               />
             ) : (
-              <div
+              <p
                 onClick={() => startEditing("description", project.description)}
-                className="text-gray-600 mt-2 p-2 -mx-2 cursor-pointer hover:bg-gray-50 rounded transition-colors border border-transparent hover:border-gray-200 min-h-[40px]"
+                className="text-gray-500 mt-4 text-lg cursor-pointer hover:bg-gray-50 rounded-xl p-2 -ml-2 transition-colors border border-transparent hover:border-gray-100"
                 title="Clicca per modificare la descrizione"
               >
-                {project.description || <span className="text-gray-400 italic">Aggiungi descrizione...</span>}
-              </div>
+                {project.description || <span className="text-gray-300 italic">Aggiungi una descrizione dettagliata per questo progetto...</span>}
+              </p>
             )}
+          </div>
+
+          <div className="lg:w-72 shrink-0 bg-gray-50 rounded-2xl p-6 border border-gray-100">
+             <div className="flex justify-between items-end mb-2">
+                <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">Avanzamento Globale</span>
+                <span className="text-2xl font-black text-blue-600">{avgProgress}%</span>
+             </div>
+             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                <div
+                  className="bg-blue-600 h-full rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${avgProgress}%` }}
+                ></div>
+             </div>
+             <p className="text-[10px] text-gray-400 mt-3 text-center font-medium uppercase tracking-tighter">Basato sulla media dei task sottostanti</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100">
-          <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">Task Totali</p>
-              <p className="text-2xl font-bold text-blue-900">{totalTasks}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-10 pt-8 border-t border-gray-50 relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+              <Calendar size={24} />
             </div>
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-              <Calendar size={20} />
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Task Totali</p>
+              <p className="text-xl font-black text-gray-900">{totalTasks}</p>
             </div>
           </div>
-          <div className="bg-red-50 p-4 rounded-lg flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600">Task Scaduti</p>
-              <p className="text-2xl font-bold text-red-900">{overdueTasks}</p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
+              <Calendar size={24} />
             </div>
-            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-600">
-              <Calendar size={20} />
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">In Scadenza</p>
+              <p className="text-xl font-black text-gray-900">{overdueTasks}</p>
             </div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Task con Allegati</p>
-              <p className="text-2xl font-bold text-green-900">{tasksWithAttachments}</p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 shadow-sm">
+              <Paperclip size={24} />
             </div>
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-              <Paperclip size={20} />
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Documenti</p>
+              <p className="text-xl font-black text-gray-900">{tasksWithAttachments}</p>
             </div>
           </div>
         </div>
@@ -612,24 +630,27 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         )}
       </div>
 
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Task del Progetto</h2>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-end gap-4">
+        <div>
+           <h2 className="text-2xl font-black text-gray-900 tracking-tight">Timeline & Task</h2>
+           <p className="text-gray-400 text-sm font-medium">Organizza le attività e monitora le scadenze</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button
             onClick={() => {
               setDefaultEmail(project?.defaultNotificationEmail || "");
               setShowSettingsModal(true);
             }}
-            className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-md flex items-center justify-center gap-2 transition shadow-sm text-sm sm:text-base"
+            className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all border border-gray-200 font-bold text-sm shadow-sm"
           >
-            <Settings size={18} className="sm:w-5 sm:h-5" />
+            <Settings size={18} />
             Impostazioni
           </button>
           <button
             onClick={openNewTaskModal}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-md flex items-center justify-center gap-2 transition shadow-sm text-sm sm:text-base"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm shadow-lg shadow-blue-500/20"
           >
-            <Plus size={18} className="sm:w-5 sm:h-5" />
+            <Plus size={18} />
             Nuovo Task
           </button>
         </div>
@@ -642,25 +663,28 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           </div>
         ) : (
           project.tasks.map((task) => (
-            <div key={task.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
-                <div className="w-full">
-                  <h3 className="text-lg font-bold text-gray-900">{task.name}</h3>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 mt-2 sm:mt-1">
-                    <div className="flex gap-2">
-                      <span>Inizio: {new Date(task.startDate).toLocaleDateString()}</span>
-                      <span className="hidden sm:inline">|</span>
-                      <span>Fine: {new Date(task.endDate).toLocaleDateString()}</span>
+            <div key={task.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+              <div className="bg-white px-6 py-5 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                <div className="flex-1 w-full">
+                  <div className="flex items-center gap-3 mb-2">
+                     <div className="w-2 h-6 rounded-full" style={{ backgroundColor: task.color || '#3b82f6' }}></div>
+                     <h3 className="text-xl font-bold text-gray-900 leading-tight">{task.name}</h3>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar size={14} className="text-gray-300" />
+                      <span>{new Date(task.startDate).toLocaleDateString()} → {new Date(task.endDate).toLocaleDateString()}</span>
                     </div>
-                    <div className="flex items-center gap-1 font-semibold text-gray-700">
-                      Stato:
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300">|</span>
+                      <span className="text-gray-500">Stato:</span>
                       {editingTaskStatusId === task.id ? (
                         <select
                           autoFocus
                           value={task.status}
                           onChange={(e) => handleInlineTaskUpdate(task.id, "status", e.target.value)}
                           onBlur={() => setEditingTaskStatusId(null)}
-                          className="border border-gray-300 rounded px-1 text-sm bg-white font-normal"
+                          className="border border-blue-500 rounded-lg px-2 py-0.5 text-xs bg-white text-blue-600 outline-none"
                         >
                           <option value="TODO">Da fare</option>
                           <option value="IN_PROGRESS">In corso</option>
@@ -668,16 +692,18 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                         </select>
                       ) : (
                         <span
-                          className="cursor-pointer hover:underline hover:text-blue-600"
+                          className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${task.status === 'DONE' ? 'bg-green-50 text-green-600' : task.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-500'}`}
                           onClick={() => setEditingTaskStatusId(task.id)}
                           title="Clicca per modificare lo stato"
                         >
-                          {task.status}
+                          {task.status === 'TODO' ? 'Da fare' : task.status === 'IN_PROGRESS' ? 'In corso' : 'Completato'}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      Progresso:
+                    <div className="flex items-center gap-3 ml-auto sm:ml-0">
+                      <div className="w-24 sm:w-32 bg-gray-100 h-2 rounded-full overflow-hidden shadow-inner relative">
+                         <div className="bg-blue-500 h-full transition-all duration-700" style={{ width: `${task.progress}%` }}></div>
+                      </div>
                       {editingTaskProgressId === task.id ? (
                         <input
                           type="number"
@@ -688,11 +714,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                           onChange={(e) => setInlineTaskProgress(e.target.value)}
                           onBlur={() => handleInlineTaskUpdate(task.id, "progress", inlineTaskProgress)}
                           onKeyDown={(e) => handleInlineProgressKeyDown(e, task.id)}
-                          className="w-16 border border-gray-300 rounded px-1 text-sm bg-white"
+                          className="w-14 border border-blue-500 rounded-lg px-1 py-0.5 text-xs text-center font-black text-blue-600 outline-none"
                         />
                       ) : (
                         <span
-                          className="cursor-pointer hover:underline hover:text-blue-600"
+                          className="font-black text-blue-600 cursor-pointer min-w-[3ch] text-right"
                           onClick={() => {
                             setEditingTaskProgressId(task.id);
                             setInlineTaskProgress(task.progress.toString());
@@ -704,63 +730,64 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                       )}
                     </div>
                   </div>
-                  {task.description && <p className="text-gray-600 mt-2 text-sm">{task.description}</p>}
+                  {task.description && <p className="text-gray-500 mt-4 text-sm leading-relaxed">{task.description}</p>}
                 </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-0 pt-3 sm:pt-0 border-gray-200 mt-2 sm:mt-0">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:border-l border-gray-100 sm:pl-6">
                   <button
                     onClick={() => {
                       resetItemForm();
                       setActiveTaskId(task.id);
                       setShowItemModal(true);
                     }}
-                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs sm:text-sm font-medium bg-blue-50 px-2 sm:px-3 py-1.5 rounded-md transition mr-auto sm:mr-0"
+                    className="flex-1 sm:flex-none text-blue-600 hover:text-white flex items-center justify-center gap-2 text-xs font-bold bg-blue-50 hover:bg-blue-600 px-4 py-2.5 rounded-xl transition-all"
                   >
-                    <Plus size={16} /> <span className="hidden sm:inline">Aggiungi Riga</span><span className="sm:hidden">Riga</span>
+                    <Plus size={16} /> <span>Aggiungi Riga</span>
                   </button>
                   <button
                     onClick={() => openEditTaskModal(task)}
-                    className="text-gray-600 hover:bg-gray-200 p-1.5 rounded-md transition"
+                    className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                     title="Modifica Task"
                   >
                     <Edit2 size={18} />
                   </button>
-                  <button onClick={() => handleDeleteTask(task.id)} className="text-red-600 hover:bg-red-50 p-1.5 rounded-md transition">
+                  <button onClick={() => handleDeleteTask(task.id)} className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Elimina Task">
                     <Trash2 size={18} />
                   </button>
                 </div>
               </div>
 
-              <div className="p-4 bg-white">
+              <div className="px-6 py-4 bg-white/50 backdrop-blur-sm">
                 {task.items.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic px-2">Nessun elemento abbinato.</p>
+                  <p className="text-xs text-gray-400 italic py-4 text-center">Nessun dettaglio associato a questo task.</p>
                 ) : (
-                  <div className="grid gap-3">
+                  <div className="grid gap-2">
                     {task.items.map((item) => (
-                      <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded bg-gray-50 border border-gray-100 hover:border-gray-300 transition-colors gap-3 sm:gap-0">
-                        <div className="flex items-start gap-3 sm:gap-4 w-full">
-                          <div className="mt-1 text-gray-400 shrink-0">
+                      <div key={item.id} className="group/item flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-xl bg-white border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all gap-4 sm:gap-0">
+                        <div className="flex items-start gap-4 w-full">
+                          <div className="mt-1 w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 group-hover/item:text-blue-500 group-hover/item:bg-blue-50 transition-colors shrink-0">
                             {item.type === "text" && <FileText size={18} />}
                             {item.type === "number" && <Hash size={18} />}
                             {item.type === "date" && <Calendar size={18} />}
                             {item.type === "attachment" && <Paperclip size={18} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
-                              <span className="truncate">{item.name}</span>
-                              <span className="text-[10px] uppercase tracking-wider bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded shrink-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="font-bold text-gray-900 truncate">{item.name}</span>
+                              <span className="text-[10px] font-black uppercase tracking-widest text-gray-300">
                                 {item.type}
                               </span>
                             </div>
-                            {item.description && <div className="text-xs sm:text-sm text-gray-500 mt-0.5 break-words">{item.description}</div>}
+                            {item.description && <div className="text-xs text-gray-400 mb-2 line-clamp-1">{item.description}</div>}
 
-                            <div className="mt-1 text-xs sm:text-sm font-medium text-blue-700">
+                            <div className="text-sm font-semibold text-blue-600">
                               {item.type === "attachment" ? (
                                 item.value ? (
-                                  <a href={item.value} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1 break-all">
-                                    Scarica File
+                                  <a href={item.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:underline">
+                                    <Paperclip size={14} />
+                                    Visualizza Allegato
                                   </a>
                                 ) : (
-                                  <span></span>
+                                  <span className="text-gray-300 italic font-normal">Nessun file</span>
                                 )
                               ) : editingInlineItemId === item.id ? (
                                 <input
@@ -770,28 +797,29 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                                   onChange={(e) => setInlineItemValue(e.target.value)}
                                   onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
                                   onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
-                                  className="w-full border-b border-blue-500 outline-none bg-white text-gray-900 px-1 py-0.5 rounded shadow-sm text-sm"
+                                  className="w-full border-2 border-blue-500 rounded-lg px-2 py-1 bg-white text-gray-900 outline-none text-sm"
                                 />
                               ) : (
                                 <span
-                                  className="cursor-pointer hover:underline break-all"
+                                  className="cursor-pointer hover:text-blue-800 transition-colors flex items-center gap-2"
                                   onClick={() => {
                                     setEditingInlineItemId(item.id);
                                     setInlineItemValue(item.value || "");
                                   }}
                                   title="Clicca per modificare"
                                 >
-                                  {item.value || <span className="text-gray-400 italic">Clicca per aggiungere valore</span>}
+                                  {item.value || <span className="text-gray-300 italic font-normal">Aggiungi valore...</span>}
+                                  <Edit2 size={12} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-1 w-full sm:w-auto justify-end border-t sm:border-0 border-gray-200 pt-2 sm:pt-0 mt-1 sm:mt-0 shrink-0">
-                          <button onClick={() => openEditItemModal(item, task.id)} className="text-gray-500 hover:text-blue-600 transition-colors p-2 bg-gray-100 sm:bg-transparent rounded" title="Modifica Riga">
+                        <div className="flex gap-1 w-full sm:w-auto justify-end opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
+                          <button onClick={() => openEditItemModal(item, task.id)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Modifica Riga">
                             <Edit2 size={16} />
                           </button>
-                          <button onClick={() => handleDeleteItem(item.id)} className="text-gray-500 hover:text-red-600 transition-colors p-2 bg-gray-100 sm:bg-transparent rounded" title="Elimina Riga">
+                          <button onClick={() => handleDeleteItem(item.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Elimina Riga">
                             <Trash2 size={16} />
                           </button>
                         </div>
