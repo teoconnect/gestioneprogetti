@@ -79,6 +79,15 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
+  // Inline Item Edit state
+  const [editingInlineItemId, setEditingInlineItemId] = useState<string | null>(null);
+  const [inlineItemValue, setInlineItemValue] = useState("");
+
+  // Inline Task Edit state (status/progress)
+  const [editingTaskStatusId, setEditingTaskStatusId] = useState<string | null>(null);
+  const [editingTaskProgressId, setEditingTaskProgressId] = useState<string | null>(null);
+  const [inlineTaskProgress, setInlineTaskProgress] = useState("");
+
   // Gantt drag state refs
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -345,6 +354,63 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const handleInlineItemUpdate = async (item: TaskItem, newValue: string) => {
+    try {
+      const res = await fetch(`/api/task-items/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          value: newValue,
+        }),
+      });
+      if (res.ok) {
+        fetchProject();
+        setEditingInlineItemId(null);
+      } else {
+        console.error("Failed to update item inline");
+      }
+    } catch (error) {
+      console.error("Error updating item inline", error);
+    }
+  };
+
+  const handleInlineItemKeyDown = (e: React.KeyboardEvent, item: TaskItem) => {
+    if (e.key === "Enter") {
+      handleInlineItemUpdate(item, inlineItemValue);
+    } else if (e.key === "Escape") {
+      setEditingInlineItemId(null);
+    }
+  };
+
+  const handleInlineTaskUpdate = async (taskId: string, field: "status" | "progress", value: string | number) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          [field]: value,
+        }),
+      });
+      if (res.ok) {
+        fetchProject();
+        if (field === "status") setEditingTaskStatusId(null);
+        if (field === "progress") setEditingTaskProgressId(null);
+      } else {
+        console.error("Failed to update task inline");
+      }
+    } catch (error) {
+      console.error("Error updating task inline", error);
+    }
+  };
+
+  const handleInlineProgressKeyDown = (e: React.KeyboardEvent, taskId: string) => {
+    if (e.key === "Enter") {
+      handleInlineTaskUpdate(taskId, "progress", inlineTaskProgress);
+    } else if (e.key === "Escape") {
+      setEditingTaskProgressId(null);
+    }
+  };
+
   const handleGanttTaskUpdate = async (task: Task, start: string, end: string) => {
     if (!project) return;
 
@@ -561,8 +627,57 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
                     <span>Inizio: {new Date(task.startDate).toLocaleDateString()}</span>
                     <span>Fine: {new Date(task.endDate).toLocaleDateString()}</span>
-                    <span className="font-semibold text-gray-700">Stato: {task.status}</span>
-                    <span>Progresso: {task.progress}%</span>
+                    <div className="flex items-center gap-1 font-semibold text-gray-700">
+                      Stato:
+                      {editingTaskStatusId === task.id ? (
+                        <select
+                          autoFocus
+                          value={task.status}
+                          onChange={(e) => handleInlineTaskUpdate(task.id, "status", e.target.value)}
+                          onBlur={() => setEditingTaskStatusId(null)}
+                          className="border border-gray-300 rounded px-1 text-sm bg-white font-normal"
+                        >
+                          <option value="TODO">Da fare</option>
+                          <option value="IN_PROGRESS">In corso</option>
+                          <option value="DONE">Completato</option>
+                        </select>
+                      ) : (
+                        <span
+                          className="cursor-pointer hover:underline hover:text-blue-600"
+                          onClick={() => setEditingTaskStatusId(task.id)}
+                          title="Clicca per modificare lo stato"
+                        >
+                          {task.status}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      Progresso:
+                      {editingTaskProgressId === task.id ? (
+                        <input
+                          type="number"
+                          autoFocus
+                          min="0"
+                          max="100"
+                          value={inlineTaskProgress}
+                          onChange={(e) => setInlineTaskProgress(e.target.value)}
+                          onBlur={() => handleInlineTaskUpdate(task.id, "progress", inlineTaskProgress)}
+                          onKeyDown={(e) => handleInlineProgressKeyDown(e, task.id)}
+                          className="w-16 border border-gray-300 rounded px-1 text-sm bg-white"
+                        />
+                      ) : (
+                        <span
+                          className="cursor-pointer hover:underline hover:text-blue-600"
+                          onClick={() => {
+                            setEditingTaskProgressId(task.id);
+                            setInlineTaskProgress(task.progress.toString());
+                          }}
+                          title="Clicca per modificare il progresso"
+                        >
+                          {task.progress}%
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {task.description && <p className="text-gray-600 mt-2 text-sm">{task.description}</p>}
                 </div>
@@ -614,12 +729,35 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                             {item.description && <div className="text-sm text-gray-500">{item.description}</div>}
 
                             <div className="mt-1 text-sm font-medium text-blue-700">
-                              {item.type === "attachment" && item.value ? (
-                                <a href={item.value} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
-                                  Scarica File
-                                </a>
+                              {item.type === "attachment" ? (
+                                item.value ? (
+                                  <a href={item.value} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+                                    Scarica File
+                                  </a>
+                                ) : (
+                                  <span></span>
+                                )
+                              ) : editingInlineItemId === item.id ? (
+                                <input
+                                  type={item.type === "number" ? "number" : item.type === "date" ? "date" : "text"}
+                                  autoFocus
+                                  value={inlineItemValue}
+                                  onChange={(e) => setInlineItemValue(e.target.value)}
+                                  onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
+                                  onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
+                                  className="w-full border-b border-blue-500 outline-none bg-white text-gray-900 px-1 py-0.5 rounded shadow-sm text-sm"
+                                />
                               ) : (
-                                <span>{item.value}</span>
+                                <span
+                                  className="cursor-pointer hover:underline"
+                                  onClick={() => {
+                                    setEditingInlineItemId(item.id);
+                                    setInlineItemValue(item.value || "");
+                                  }}
+                                  title="Clicca per modificare"
+                                >
+                                  {item.value || <span className="text-gray-400 italic">Clicca per aggiungere valore</span>}
+                                </span>
                               )}
                             </div>
                           </div>
