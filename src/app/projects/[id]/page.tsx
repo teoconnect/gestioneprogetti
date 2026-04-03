@@ -88,6 +88,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [editingTaskProgressId, setEditingTaskProgressId] = useState<string | null>(null);
   const [inlineTaskProgress, setInlineTaskProgress] = useState("");
 
+  // Gantt Click modal state
+  const [selectedGanttTaskId, setSelectedGanttTaskId] = useState<string | null>(null);
+
   // Gantt drag state refs
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -411,6 +414,10 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const handleGanttTaskClick = (task: Task) => {
+    setSelectedGanttTaskId(task.id);
+  };
+
   const handleGanttTaskUpdate = async (task: Task, start: string, end: string) => {
     if (!project) return;
 
@@ -587,7 +594,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           <Calendar size={24} className="text-blue-600" />
           Gantt del Progetto
         </h2>
-        <GanttChartWrapper tasks={project.tasks} onTaskUpdate={handleGanttTaskUpdate} onTaskProgressUpdate={handleGanttProgressUpdate} />
+        <GanttChartWrapper tasks={project.tasks} onTaskUpdate={handleGanttTaskUpdate} onTaskProgressUpdate={handleGanttProgressUpdate} onTaskClick={handleGanttTaskClick} />
       </div>
 
       <div className="mb-6 flex justify-between items-center">
@@ -926,6 +933,27 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Gantt Task Modal (iframe) */}
+      {selectedGanttTaskId && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedGanttTaskId(null)}>
+          <div className="bg-white rounded-xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col" style={{ height: '80vh' }} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-800">Dettaglio Task</h2>
+              <button onClick={() => setSelectedGanttTaskId(null)} className="text-gray-500 hover:text-gray-800 transition p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <div className="flex-1 w-full bg-gray-100">
+              <iframe
+                src={`/projects/${project.id}/task/${selectedGanttTaskId}`}
+                className="w-full h-full border-0"
+                title="Task Details"
+              />
+            </div>
           </div>
         </div>
       )}

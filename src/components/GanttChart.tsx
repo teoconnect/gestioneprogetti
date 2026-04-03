@@ -20,9 +20,11 @@ interface GanttChartProps {
   onTaskUpdate: (task: any, start: string, end: string) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTaskProgressUpdate?: (task: any, progress: number) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onTaskClick?: (task: any) => void;
 }
 
-export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }: GanttChartProps) {
+export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, onTaskClick }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [ganttInst, setGanttInst] = useState<any>(null);
@@ -90,6 +92,13 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate }
         const originalTask = tasks.find((t) => t.id === task.id);
         if (originalTask && onTaskProgressUpdate) {
           onTaskProgressUpdate(originalTask, progress);
+        }
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      on_click: (task: any) => {
+        const originalTask = tasks.find((t) => t.id === task.id);
+        if (originalTask && onTaskClick) {
+          onTaskClick(originalTask);
         }
       },
       language: "it",
