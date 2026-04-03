@@ -33,22 +33,55 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
   const searchParams = useSearchParams();
   const isModal = searchParams.get("modal") === "true";
 
-  useEffect(() => {
-    async function fetchTask() {
-      try {
-        const res = await fetch(`/api/tasks/${resolvedParams.taskId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setTask(data);
-        }
-      } catch (error) {
-        console.error("Error fetching task", error);
-      } finally {
-        setLoading(false);
+  // Inline Item Edit state
+  const [editingInlineItemId, setEditingInlineItemId] = useState<string | null>(null);
+  const [inlineItemValue, setInlineItemValue] = useState("");
+
+  const fetchTask = async () => {
+    try {
+      const res = await fetch(`/api/tasks/${resolvedParams.taskId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTask(data);
       }
+    } catch (error) {
+      console.error("Error fetching task", error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchTask();
   }, [resolvedParams.taskId]);
+
+  const handleInlineItemUpdate = async (item: TaskItem, newValue: string) => {
+    try {
+      const res = await fetch(`/api/task-items/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          value: newValue,
+        }),
+      });
+      if (res.ok) {
+        fetchTask();
+        setEditingInlineItemId(null);
+      } else {
+        console.error("Failed to update item inline");
+      }
+    } catch (error) {
+      console.error("Error updating item inline", error);
+    }
+  };
+
+  const handleInlineItemKeyDown = (e: React.KeyboardEvent, item: TaskItem) => {
+    if (e.key === "Enter") {
+      handleInlineItemUpdate(item, inlineItemValue);
+    } else if (e.key === "Escape") {
+      setEditingInlineItemId(null);
+    }
+  };
 
   if (loading) return <div className="text-center py-10">Caricamento in corso...</div>;
   if (!task) return <div className="text-center py-10">Task non trovato</div>;
@@ -123,13 +156,34 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
                     {item.description && <div className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</div>}
 
                     <div className="mt-3 pt-3 border-t border-gray-200 text-sm font-medium text-blue-700 break-all">
-                      {item.type === "attachment" && item.value ? (
-                        <a href={item.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 bg-white border border-blue-200 px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors">
-                          <Paperclip size={14} /> Scarica Allegato
-                        </a>
+                      {item.type === "attachment" ? (
+                        item.value ? (
+                          <a href={item.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 bg-white border border-blue-200 px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors">
+                            <Paperclip size={14} /> Scarica Allegato
+                          </a>
+                        ) : (
+                          <span></span>
+                        )
+                      ) : editingInlineItemId === item.id ? (
+                        <input
+                          type={item.type === "number" ? "number" : item.type === "date" ? "date" : "text"}
+                          autoFocus
+                          value={inlineItemValue}
+                          onChange={(e) => setInlineItemValue(e.target.value)}
+                          onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
+                          onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
+                          className="w-full border-b border-blue-500 outline-none bg-white text-gray-900 px-1 py-0.5 rounded shadow-sm text-sm"
+                        />
                       ) : (
-                        <span className="bg-white px-3 py-1.5 rounded-md border border-gray-200 block">
-                          {item.value || <span className="text-gray-400 italic">Nessun valore</span>}
+                        <span
+                          className="bg-white px-3 py-1.5 rounded-md border border-gray-200 block cursor-pointer hover:border-blue-300 transition-colors"
+                          onClick={() => {
+                            setEditingInlineItemId(item.id);
+                            setInlineItemValue(item.value || "");
+                          }}
+                          title="Clicca per modificare il valore"
+                        >
+                          {item.value || <span className="text-gray-400 italic">Clicca per aggiungere valore</span>}
                         </span>
                       )}
                     </div>
