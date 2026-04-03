@@ -1,18 +1,25 @@
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
+
+const transportConfig: SMTPTransport.Options = {
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || '587'),
   secure: parseInt(process.env.SMTP_PORT || '587') === 465, // true for 465, false for other ports
-  auth: {
+};
+
+if (process.env.SMTP_USER || process.env.SMTP_PASS) {
+  transportConfig.auth = {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-  },
-});
+  };
+}
+
+const transporter = nodemailer.createTransport(transportConfig);
 
 export const sendEmail = async (to: string, subject: string, html: string) => {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-    console.warn('SMTP configurato parzialmente o mancante. Impossibile inviare la email.');
+  if (!process.env.SMTP_HOST) {
+    console.warn('SMTP_HOST mancante. Impossibile inviare la email.');
     return;
   }
 
