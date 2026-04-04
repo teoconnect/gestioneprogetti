@@ -5,15 +5,15 @@ import { sendTaskStartDateEmail, sendTaskEndDateEmail } from './email';
 const prisma = new PrismaClient();
 
 export const initCronJobs = () => {
-  // Eseguiamo il cron job ogni giorno alle 08:00 AM
-  cron.schedule('0 8 * * *', async () => {
+  // Eseguiamo il cron job ogni giorno a mezzanotte
+  cron.schedule('0 0 * * *', async () => {
     console.log('Esecuzione cron job notifiche giornaliere...');
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Lavoriamo esclusivamente con l'UTC per evitare problemi di fuso orario
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
 
-    const endOfToday = new Date(today);
-    endOfToday.setHours(23, 59, 59, 999);
+    const endOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
 
     try {
       // Troviamo i task che INIZIANO oggi e hanno le notifiche attivate
