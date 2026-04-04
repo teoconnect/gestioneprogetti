@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Trash2, LogOut } from "lucide-react";
+import { Plus, Trash2, LogOut, RefreshCw } from "lucide-react";
 import { calculateProgress } from "@/lib/utils";
 
 type Project = {
@@ -68,15 +68,46 @@ export default function Dashboard() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Sei sicuro di voler eliminare questo progetto?")) return;
+  const handleSoftDelete = async (id: string) => {
+    if (!confirm("Sei sicuro di voler spostare questo progetto nel cestino?")) return;
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "deleted" }),
+      });
+      if (res.ok) {
+        fetchProjects();
+      }
+    } catch (error) {
+      console.error("Failed to soft delete project", error);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "active" }),
+      });
+      if (res.ok) {
+        fetchProjects();
+      }
+    } catch (error) {
+      console.error("Failed to restore project", error);
+    }
+  };
+
+  const handleHardDelete = async (id: string) => {
+    if (!confirm("ATTENZIONE: Sei sicuro di voler eliminare DEFINITIVAMENTE questo progetto? L'operazione non è reversibile.")) return;
     try {
       const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
       if (res.ok) {
         fetchProjects();
       }
     } catch (error) {
-      console.error("Failed to delete project", error);
+      console.error("Failed to hard delete project", error);
     }
   };
 
@@ -95,7 +126,14 @@ export default function Dashboard() {
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.code.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filterStatus === "all" || p.status === filterStatus;
+
+    let matchesStatus = false;
+    if (filterStatus === "all") {
+      matchesStatus = p.status !== "deleted";
+    } else {
+      matchesStatus = p.status === filterStatus;
+    }
+
     return matchesSearch && matchesStatus;
   });
 
@@ -145,6 +183,7 @@ export default function Dashboard() {
             <option value="all">Tutti gli stati</option>
             <option value="active">Attivo</option>
             <option value="completed">Completato</option>
+            <option value="deleted">Cestino</option>
           </select>
         </div>
       </div>
@@ -186,20 +225,43 @@ export default function Dashboard() {
                       <div className="flex-1 pr-4">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[10px] font-bold tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">{project.code}</span>
-                          <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${project.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'}`}>
-                            {project.status === 'active' ? 'Attivo' : 'Completato'}
+                          <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
+                            project.status === 'active' ? 'bg-green-50 text-green-600' :
+                            project.status === 'deleted' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
+                          }`}>
+                            {project.status === 'active' ? 'Attivo' :
+                             project.status === 'deleted' ? 'Cancellato' : 'Completato'}
                           </span>
                         </div>
                         <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{project.name}</h3>
                       </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.preventDefault(); handleDelete(project.id); }}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Elimina"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                      <div className="flex gap-2">
+                        {project.status === "deleted" ? (
+                          <>
+                            <button
+                              onClick={(e) => { e.preventDefault(); handleRestore(project.id); }}
+                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Ripristina"
+                            >
+                              <RefreshCw size={18} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.preventDefault(); handleHardDelete(project.id); }}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Elimina definitivamente"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.preventDefault(); handleSoftDelete(project.id); }}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Sposta nel cestino"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -220,12 +282,18 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <Link
-                      href={`/projects/${project.id}`}
-                      className="mt-auto w-full text-center bg-gray-50 hover:bg-blue-600 hover:text-white text-gray-700 font-bold py-3 rounded-xl transition-all duration-200"
-                    >
-                      Vai al Progetto
-                    </Link>
+                    {project.status !== "deleted" ? (
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="mt-auto w-full text-center bg-gray-50 hover:bg-blue-600 hover:text-white text-gray-700 font-bold py-3 rounded-xl transition-all duration-200"
+                      >
+                        Vai al Progetto
+                      </Link>
+                    ) : (
+                      <div className="mt-auto w-full text-center bg-red-50 text-red-700 font-bold py-3 rounded-xl">
+                        Progetto nel Cestino
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -253,8 +321,12 @@ export default function Dashboard() {
                           <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{project.code}</span>
                           <h3 className="text-lg font-bold text-gray-900 leading-tight">{project.name}</h3>
                         </div>
-                        <span className={`px-2 py-1 inline-flex text-[10px] font-bold uppercase rounded ${project.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'}`}>
-                          {project.status === 'active' ? 'Attivo' : 'Completato'}
+                        <span className={`px-2 py-1 inline-flex text-[10px] font-bold uppercase rounded ${
+                            project.status === 'active' ? 'bg-green-50 text-green-600' :
+                            project.status === 'deleted' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
+                        }`}>
+                          {project.status === 'active' ? 'Attivo' :
+                           project.status === 'deleted' ? 'Cancellato' : 'Completato'}
                         </span>
                       </div>
 
@@ -272,13 +344,39 @@ export default function Dashboard() {
                       </div>
 
                       <div className="flex justify-between items-center pt-3 border-t border-gray-50">
-                        <span className="text-blue-600 text-xs font-bold uppercase tracking-wider">Visualizza Dettagli</span>
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(project.id); }}
-                          className="text-gray-400 hover:text-red-600 p-1"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {project.status !== "deleted" ? (
+                          <span className="text-blue-600 text-xs font-bold uppercase tracking-wider">Visualizza Dettagli</span>
+                        ) : (
+                          <span className="text-red-600 text-xs font-bold uppercase tracking-wider">Nel Cestino</span>
+                        )}
+                        <div className="flex gap-2">
+                          {project.status === "deleted" ? (
+                            <>
+                              <button
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRestore(project.id); }}
+                                className="text-gray-400 hover:text-green-600 p-1"
+                                title="Ripristina"
+                              >
+                                <RefreshCw size={16} />
+                              </button>
+                              <button
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleHardDelete(project.id); }}
+                                className="text-gray-400 hover:text-red-600 p-1"
+                                title="Elimina definitivamente"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSoftDelete(project.id); }}
+                              className="text-gray-400 hover:text-red-600 p-1"
+                              title="Sposta nel cestino"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </Link>
