@@ -3,6 +3,7 @@
   "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
   "forwardPorts": [3000],
   "postCreateCommand": "npm install && cp .env.example .env && npx prisma generate",
+  "postStartCommand": "npm run dev",
   "customizations": {
     "vscode": {
       "extensions": [
