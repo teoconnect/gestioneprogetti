@@ -48,6 +48,12 @@ export async function GET(
             id: true,
             username: true,
           }
+        },
+        notifiedUsers: {
+          select: {
+            id: true,
+            username: true,
+          }
         }
       },
     });
@@ -98,13 +104,14 @@ export async function PUT(
       updateData.progress = parseInt(updateData.progress, 10);
     }
 
-    const { userIds, ...taskData } = updateData;
+    const { userIds, notifiedUserIds, notificationsEnabled, ...taskData } = updateData;
 
     // Recupera il task originale per confrontare i campi
     const originalTask = await prisma.task.findUnique({
       where: { id: resolvedParams.id },
       include: {
         users: { select: { email: true } },
+        notifiedUsers: { select: { email: true } },
         project: {
           include: {
             users: { select: { email: true } }
@@ -148,6 +155,11 @@ export async function PUT(
           users: {
             set: userIds.map((id: string) => ({ id }))
           }
+        } : {}),
+        ...(notifiedUserIds ? {
+          notifiedUsers: {
+            set: notifiedUserIds.map((id: string) => ({ id }))
+          }
         } : {})
       },
     });
@@ -171,6 +183,7 @@ export async function PUT(
       where: { id: task.id },
       include: {
         users: { select: { email: true } },
+        notifiedUsers: { select: { email: true } },
         project: {
           include: {
             users: { select: { email: true } }
@@ -179,17 +192,8 @@ export async function PUT(
       }
     });
 
-    if (task.notificationsEnabled && changedFields.length > 0 && updatedTaskWithRelations) {
-      // Determina i destinatari: prima gli utenti del task, se non ce ne sono, gli utenti del progetto
-      let recipients: string[] = [];
-
-      const taskUsersWithEmail = updatedTaskWithRelations.users.filter(u => u.email).map(u => u.email as string);
-      if (taskUsersWithEmail.length > 0) {
-        recipients = taskUsersWithEmail;
-      } else {
-        const projectUsersWithEmail = updatedTaskWithRelations.project?.users.filter(u => u.email).map(u => u.email as string) || [];
-        recipients = projectUsersWithEmail;
-      }
+    if (updatedTaskWithRelations && updatedTaskWithRelations.notifiedUsers.length > 0 && changedFields.length > 0) {
+      const recipients = updatedTaskWithRelations.notifiedUsers.filter(u => u.email).map(u => u.email as string);
 
       if (recipients.length > 0) {
         await sendTaskModificationEmail(

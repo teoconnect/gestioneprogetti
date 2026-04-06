@@ -29,9 +29,9 @@ type Task = {
   progress: number;
   color: string | null;
   dependencies: string | null;
-  notificationsEnabled: boolean;
   items: TaskItem[];
   users?: User[];
+  notifiedUsers?: User[];
 };
 
 type Project = {
@@ -72,10 +72,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [taskProgress, setTaskProgress] = useState("0");
   const [taskColor, setTaskColor] = useState("");
   const [taskDependencies, setTaskDependencies] = useState<string[]>([]);
-  const [taskNotificationsEnabled, setTaskNotificationsEnabled] = useState(false);
+  const [taskNotifiedUsers, setTaskNotifiedUsers] = useState<string[]>([]);
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskSelectedUsers, setTaskSelectedUsers] = useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Item form
   const [itemType, setItemType] = useState("text");
@@ -129,11 +130,32 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         const data = await res.json();
         setAllSystemUsers(data);
+
+        // Cerca di estrarre l'utente loggato usando un cookie locale o decodifica (se ci fosse /api/auth/me sarebbe meglio)
+        // Siccome non c'è, ma conosciamo l'auth-token che non possiamo decodificare client-side facilmente senza jose,
+        // lasciamo l'id nullo per ora se non possiamo recuperarlo in modo sicuro client-side,
+        // ALTRIMENTI un escamotage temporaneo è sapere se ci fosse una rotta o passarlo nel layout.
       }
     } catch (error) {
       console.error("Failed to fetch all users", error);
     }
   }
+
+  useEffect(() => {
+    // Cerchiamo di recuperare i dettagli dell'utente correntemente loggato
+    const fetchMe = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+           const data = await res.json();
+           setCurrentUserId(data.id);
+        }
+      } catch (e) {
+        // ignora
+      }
+    }
+    fetchMe();
+  }, []);
 
   const handleProjectUpdate = async (field: "name" | "description" | "status", value: string) => {
     if (!project) return;
@@ -208,7 +230,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskProgress("0");
     setTaskColor("");
     setTaskDependencies([]);
-    setTaskNotificationsEnabled(false);
+    setTaskNotifiedUsers([]);
     setIsEditingTask(false);
     setEditingTaskId(null);
     setTaskSelectedUsers([]);
@@ -216,6 +238,12 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   const toggleTaskUserSelection = (userId: string) => {
     setTaskSelectedUsers(prev =>
+        prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  }
+
+  const toggleTaskNotifiedUser = (userId: string) => {
+    setTaskNotifiedUsers(prev =>
         prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
   }
@@ -239,7 +267,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           progress: taskProgress,
           color: taskColor,
           dependencies: taskDependencies.join(","),
-          notificationsEnabled: taskNotificationsEnabled,
+          notifiedUserIds: taskNotifiedUsers,
           userIds: taskSelectedUsers,
         }),
       });
@@ -262,7 +290,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskProgress(task.progress.toString());
     setTaskColor(task.color || "");
     setTaskDependencies(task.dependencies ? task.dependencies.split(",").map(d => d.trim()).filter(Boolean) : []);
-    setTaskNotificationsEnabled(task.notificationsEnabled);
+    setTaskNotifiedUsers(task.notifiedUsers ? task.notifiedUsers.map((u: any) => u.id) : []);
     setTaskSelectedUsers(task.users ? task.users.map((u: any) => u.id) : []);
     setIsEditingTask(true);
     setEditingTaskId(task.id);
@@ -927,12 +955,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     <input type="text" placeholder="#10b981" value={taskColor} onChange={e => setTaskColor(e.target.value)} className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" />
                   </div>
                 </div>
-                <div>
-                  <label className="flex items-center gap-2 sm:mt-7 mb-1 cursor-pointer">
-                    <input type="checkbox" checked={taskNotificationsEnabled} onChange={e => setTaskNotificationsEnabled(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5 shrink-0" />
-                    <span className="text-sm font-medium text-gray-700 line-clamp-2">Abilita Notifiche Email al Team</span>
-                  </label>
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -966,9 +988,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
               {project?.users && project.users.length > 0 && (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Assegna Task a Utenti (Membri del progetto)</label>
-                    <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Assegnatari (Chi ci lavora)</label>
+                    <div className="h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
                       {project.users.map(u => (
                         <label key={u.id} className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer">
                           <input
@@ -976,6 +998,32 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                             checked={taskSelectedUsers.includes(u.id)}
                             onChange={() => toggleTaskUserSelection(u.id)}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{u.username}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Notifiche Email (Osservatori)</label>
+                    </div>
+                    <div className="h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+                      <div className="flex flex-wrap gap-1 mb-3">
+                         {currentUserId && (
+                           <button type="button" onClick={() => setTaskNotifiedUsers([currentUserId])} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition">Solo a me</button>
+                         )}
+                         <button type="button" onClick={() => setTaskNotifiedUsers([...taskSelectedUsers])} className="text-[10px] bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 transition">Tutti gli Assegnatari</button>
+                         <button type="button" onClick={() => setTaskNotifiedUsers([])} className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition">Nessuno</button>
+                      </div>
+                      {project.users.map(u => (
+                        <label key={u.id} className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={taskNotifiedUsers.includes(u.id)}
+                            onChange={() => toggleTaskNotifiedUser(u.id)}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                           />
                           <span className="text-sm text-gray-700">{u.username}</span>
                         </label>

@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       else if (status === "IN_PROGRESS" && (progress === 0 || progress === 100)) progress = 50;
     }
 
-    const { userIds, ...taskData } = data;
+    const { userIds, notifiedUserIds, notificationsEnabled, ...taskData } = data;
 
     const task = await prisma.task.create({
       data: {
@@ -85,10 +85,14 @@ export async function POST(request: Request) {
         progress: progress !== undefined ? progress : 0,
         color: data.color || null,
         dependencies: data.dependencies || null,
-        notificationsEnabled: data.notificationsEnabled || false,
         ...(userIds && userIds.length > 0 ? {
           users: {
             connect: userIds.map((id: string) => ({ id }))
+          }
+        } : {}),
+        ...(notifiedUserIds && notifiedUserIds.length > 0 ? {
+          notifiedUsers: {
+            connect: notifiedUserIds.map((id: string) => ({ id }))
           }
         } : {})
       },

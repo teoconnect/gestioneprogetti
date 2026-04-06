@@ -16,7 +16,8 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   projects     Project[] // Implicit many-to-many
-  tasks        Task[]    // Implicit many-to-many
+  tasks        Task[]    @relation("TaskAssignees") // Tasks where user is working
+  notifiedTasks Task[]   @relation("TaskNotifiedUsers") // Tasks user is watching
 }
 
 model Project {
@@ -42,12 +43,12 @@ model Task {
   progress     Int        @default(0)
   color        String?
   dependencies String?
-  notificationsEnabled Boolean @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   items        TaskItem[]
-  users        User[]     // Implicit many-to-many
+  users        User[]     @relation("TaskAssignees") // Assignees
+  notifiedUsers User[]    @relation("TaskNotifiedUsers") // Watchers
 }
 
 model TaskItem {
