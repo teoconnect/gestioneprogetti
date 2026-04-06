@@ -29,6 +29,7 @@ export async function GET() {
       select: {
         id: true,
         username: true,
+        email: true,
         role: true,
         createdAt: true,
       },
@@ -48,10 +49,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { username, password, role } = await request.json();
+    const { username, email, password, role } = await request.json();
 
     if (!username || !password || !role) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (role === "USER" && !email) {
+      return NextResponse.json({ error: "Email is required for standard users" }, { status: 400 });
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -62,17 +67,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Username already exists" }, { status: 400 });
     }
 
+    if (email) {
+      const existingEmail = await prisma.user.findUnique({ where: { email } });
+      if (existingEmail) {
+        return NextResponse.json({ error: "Email already in use" }, { status: 400 });
+      }
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const newUser = await prisma.user.create({
       data: {
         username,
+        email: email || null,
         passwordHash,
         role,
       },
       select: {
         id: true,
         username: true,
+        email: true,
         role: true,
         createdAt: true,
       },

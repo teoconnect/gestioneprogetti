@@ -30,9 +30,13 @@ export async function PUT(
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
-    const { username, password, role } = await request.json();
+    const { username, email, password, role } = await request.json();
 
-    const dataToUpdate: any = { username, role };
+    if (role === "USER" && !email) {
+      return NextResponse.json({ error: "Email is required for standard users" }, { status: 400 });
+    }
+
+    const dataToUpdate: any = { username, email: email || null, role };
     if (password) {
       dataToUpdate.passwordHash = await bcrypt.hash(password, 10);
     }
@@ -53,12 +57,20 @@ export async function PUT(
        dataToUpdate.role = "ADMIN";
     }
 
+    if (email) {
+      const existingEmail = await prisma.user.findFirst({ where: { email, id: { not: id } } });
+      if (existingEmail) {
+        return NextResponse.json({ error: "Email already in use by another user" }, { status: 400 });
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id },
       data: dataToUpdate,
       select: {
         id: true,
         username: true,
+        email: true,
         role: true,
         createdAt: true,
       },

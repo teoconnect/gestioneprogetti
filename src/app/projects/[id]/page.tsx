@@ -30,7 +30,6 @@ type Task = {
   color: string | null;
   dependencies: string | null;
   notificationsEnabled: boolean;
-  notificationEmail: string | null;
   items: TaskItem[];
   users?: User[];
 };
@@ -41,7 +40,6 @@ type Project = {
   name: string;
   description: string | null;
   status: string;
-  defaultNotificationEmail: string | null;
   tasks: Task[];
   users?: User[];
 };
@@ -62,7 +60,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
   // Settings Form
-  const [defaultEmail, setDefaultEmail] = useState("");
+  const [projectSelectedUsers, setProjectSelectedUsers] = useState<string[]>([]);
+  const [allSystemUsers, setAllSystemUsers] = useState<any[]>([]);
 
   // Task form
   const [taskName, setTaskName] = useState("");
@@ -74,7 +73,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [taskColor, setTaskColor] = useState("");
   const [taskDependencies, setTaskDependencies] = useState<string[]>([]);
   const [taskNotificationsEnabled, setTaskNotificationsEnabled] = useState(false);
-  const [taskNotificationEmail, setTaskNotificationEmail] = useState("");
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskSelectedUsers, setTaskSelectedUsers] = useState<string[]>([]);
@@ -122,7 +120,20 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     fetchProject();
+    fetchAllSystemUsers();
   }, [fetchProject]);
+
+  const fetchAllSystemUsers = async () => {
+    try {
+      const res = await fetch("/api/users/list");
+      if (res.ok) {
+        const data = await res.json();
+        setAllSystemUsers(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch all users", error);
+    }
+  }
 
   const handleProjectUpdate = async (field: "name" | "description" | "status", value: string) => {
     if (!project) return;
@@ -155,7 +166,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       const res = await fetch(`/api/projects/${project.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ defaultNotificationEmail: defaultEmail }),
+        body: JSON.stringify({
+          userIds: projectSelectedUsers
+        }),
       });
       if (res.ok) {
         fetchProject();
@@ -166,28 +179,11 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleTestEmail = async () => {
-    if (!project || !defaultEmail) {
-      alert("Inserisci un'email prima di fare il test.");
-      return;
-    }
-    try {
-      const res = await fetch(`/api/projects/${project.id}/test-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: defaultEmail }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("Email inviata con successo!");
-      } else {
-        alert("Errore nell'invio dell'email: " + (data.error || ""));
-      }
-    } catch (error) {
-      console.error("Error testing email", error);
-      alert("Si è verificato un errore.");
-    }
-  };
+  const toggleProjectUserSelection = (userId: string) => {
+    setProjectSelectedUsers(prev =>
+        prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  }
 
   const handleEditKeyDown = (e: React.KeyboardEvent, field: "name" | "description" | "status") => {
     if (e.key === "Enter" && field !== "description") {
@@ -200,10 +196,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   const openNewTaskModal = () => {
     resetTaskForm();
-    if (project?.defaultNotificationEmail) {
-      setTaskNotificationsEnabled(true);
-      setTaskNotificationEmail(project.defaultNotificationEmail);
-    }
     setShowTaskModal(true);
   };
 
@@ -217,7 +209,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskColor("");
     setTaskDependencies([]);
     setTaskNotificationsEnabled(false);
-    setTaskNotificationEmail("");
     setIsEditingTask(false);
     setEditingTaskId(null);
     setTaskSelectedUsers([]);
@@ -249,7 +240,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           color: taskColor,
           dependencies: taskDependencies.join(","),
           notificationsEnabled: taskNotificationsEnabled,
-          notificationEmail: taskNotificationEmail || null,
           userIds: taskSelectedUsers,
         }),
       });
@@ -273,7 +263,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskColor(task.color || "");
     setTaskDependencies(task.dependencies ? task.dependencies.split(",").map(d => d.trim()).filter(Boolean) : []);
     setTaskNotificationsEnabled(task.notificationsEnabled);
-    setTaskNotificationEmail(task.notificationEmail || "");
     setTaskSelectedUsers(task.users ? task.users.map((u: any) => u.id) : []);
     setIsEditingTask(true);
     setEditingTaskId(task.id);
@@ -655,13 +644,13 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button
             onClick={() => {
-              setDefaultEmail(project?.defaultNotificationEmail || "");
+              setProjectSelectedUsers(project?.users ? project.users.map(u => u.id) : []);
               setShowSettingsModal(true);
             }}
             className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all border border-gray-200 font-bold text-sm shadow-sm"
           >
             <Settings size={18} />
-            Impostazioni
+            Team Progetto
           </button>
           <button
             onClick={openNewTaskModal}
@@ -941,17 +930,10 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 <div>
                   <label className="flex items-center gap-2 sm:mt-7 mb-1 cursor-pointer">
                     <input type="checkbox" checked={taskNotificationsEnabled} onChange={e => setTaskNotificationsEnabled(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5 shrink-0" />
-                    <span className="text-sm font-medium text-gray-700 line-clamp-2">Abilita Notifiche Email</span>
+                    <span className="text-sm font-medium text-gray-700 line-clamp-2">Abilita Notifiche Email al Team</span>
                   </label>
                 </div>
               </div>
-
-              {taskNotificationsEnabled && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email per Notifiche</label>
-                  <input required type="email" value={taskNotificationEmail} onChange={e => setTaskNotificationEmail(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="nome@esempio.com" />
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
@@ -1016,32 +998,29 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Impostazioni Progetto</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Team di Progetto</h2>
             <form onSubmit={handleProjectSettingsUpdate} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Notifiche Predefinita
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={defaultEmail}
-                    onChange={(e) => setDefaultEmail(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                    placeholder="nome@esempio.com"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleTestEmail}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition whitespace-nowrap"
-                  >
-                    Testa
-                  </button>
+              {allSystemUsers.length > 0 && (
+                <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">Membri del Progetto</label>
+                   <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+                       {allSystemUsers.map(user => (
+                           <label key={user.id} className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer">
+                               <input
+                                   type="checkbox"
+                                   checked={projectSelectedUsers.includes(user.id)}
+                                   onChange={() => toggleProjectUserSelection(user.id)}
+                                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                               />
+                               <span className="text-sm text-gray-700">{user.username} {user.role === 'ADMIN' && '(Admin)'}</span>
+                           </label>
+                       ))}
+                   </div>
+                   <p className="text-xs text-gray-500 mt-2">
+                     Solo i membri selezionati (e gli Admin) potranno vedere questo progetto e i suoi task.
+                   </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Se impostata, questa email verrà abilitata di default per i nuovi task creati in questo progetto.
-                </p>
-              </div>
+              )}
 
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
                 <button

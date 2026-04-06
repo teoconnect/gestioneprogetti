@@ -3,14 +3,42 @@ import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import path from "path";
 
+import { cookies } from "next/headers";
+import { verifyAuth } from "@/lib/auth";
+
+async function getSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth-token")?.value;
+  if (!token) return null;
+  try {
+    return await verifyAuth(token);
+  } catch (error) {
+    return null;
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const resolvedParams = await params;
-    const project = await prisma.project.findUnique({
-      where: { id: resolvedParams.id },
+
+    // Authorization check for single project access
+    const whereClause: any = { id: resolvedParams.id };
+    if (session.role !== "ADMIN") {
+      whereClause.users = {
+        some: {
+          id: session.id,
+        },
+      };
+    }
+
+    const project = await prisma.project.findFirst({
+      where: whereClause,
       include: {
         users: {
           select: {
@@ -55,6 +83,7 @@ export async function PUT(
     const { userIds, ...projectData } = data;
 
     const updateData: any = { ...projectData };
+    delete updateData.defaultNotificationEmail;
 
     if (userIds) {
        updateData.users = {
