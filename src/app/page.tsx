@@ -23,9 +23,16 @@ export default function Dashboard() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("active");
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // New states for personal tasks summary
+  const [myTasks, setMyTasks] = useState<any[]>([]);
 
   const fetchProjects = async () => {
     try {
@@ -46,27 +53,69 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchProjects();
+    fetchMyTasks();
+    checkAdminAndFetchUsers();
   }, []);
+
+  const fetchMyTasks = async () => {
+    try {
+        const res = await fetch("/api/tasks");
+        if (res.ok) {
+            const data = await res.json();
+            // Filter tasks assigned to me that are not done to display a summary
+            setMyTasks(data.filter((t: any) => t.status !== "DONE" && t.status !== "deleted"));
+        }
+    } catch (e) {
+        console.error("Failed to fetch my tasks", e);
+    }
+  }
+
+  const checkAdminAndFetchUsers = async () => {
+    try {
+       const res = await fetch("/api/users");
+       if (res.ok) {
+           const users = await res.json();
+           setAllUsers(users);
+           setIsAdmin(true);
+       } else {
+           setIsAdmin(false);
+       }
+    } catch (e) {
+       setIsAdmin(false);
+    }
+  }
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload: any = { name, description, status };
+      if (isAdmin && selectedUsers.length > 0) {
+        payload.userIds = selectedUsers;
+      }
+
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, status }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setShowModal(false);
         setName("");
         setDescription("");
         setStatus("active");
+        setSelectedUsers([]);
         fetchProjects();
       }
     } catch (error) {
       console.error("Failed to create project", error);
     }
   };
+
+  const toggleUserSelection = (userId: string) => {
+      setSelectedUsers(prev =>
+          prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+      );
+  }
 
   const handleSoftDelete = async (id: string) => {
     if (!confirm("Sei sicuro di voler spostare questo progetto nel cestino?")) return;
@@ -145,6 +194,15 @@ export default function Dashboard() {
           <p className="text-gray-500 mt-1 text-sm sm:text-base">Gestisci e monitora i tuoi flussi di lavoro</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          {isAdmin && (
+             <Link
+                href="/users"
+                className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md text-sm sm:text-base font-semibold"
+             >
+                <span className="hidden sm:inline">Utenti</span>
+                <span className="sm:hidden">Utenti</span>
+             </Link>
+          )}
           <button
             onClick={() => setShowModal(true)}
             className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md text-sm sm:text-base font-semibold"
@@ -163,6 +221,34 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {myTasks.length > 0 && (
+        <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 tracking-tight">I miei Task Attivi</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {myTasks.slice(0, 6).map(task => (
+                    <Link key={task.id} href={`/projects/${task.projectId}`} className="block">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-blue-200 transition-all">
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="text-[10px] font-bold text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded">{task.project?.code}</span>
+                                <span className={`text-[10px] font-bold uppercase ${task.status === 'IN_PROGRESS' ? 'text-blue-600' : 'text-gray-500'}`}>
+                                    {task.status === 'IN_PROGRESS' ? 'In corso' : 'Da fare'}
+                                </span>
+                            </div>
+                            <h3 className="font-bold text-gray-900 leading-tight mb-3 line-clamp-1">{task.name}</h3>
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-semibold">
+                                <span>Scadenza: {new Date(task.endDate).toLocaleDateString()}</span>
+                                <span className="text-blue-600">{task.progress}%</span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                                <div className="bg-blue-600 h-full rounded-full" style={{ width: `${task.progress}%` }}></div>
+                            </div>
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
         <div className="flex-1 relative">
@@ -407,6 +493,26 @@ export default function Dashboard() {
                   <option value="completed">Completato</option>
                 </select>
               </div>
+
+              {isAdmin && allUsers.length > 0 && (
+                <div>
+                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Assegna Utenti al Team</label>
+                   <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-2">
+                       {allUsers.map(user => (
+                           <label key={user.id} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-gray-50 rounded">
+                               <input
+                                   type="checkbox"
+                                   checked={selectedUsers.includes(user.id)}
+                                   onChange={() => toggleUserSelection(user.id)}
+                                   className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                               />
+                               <span className="text-sm text-gray-700">{user.username} ({user.role})</span>
+                           </label>
+                       ))}
+                   </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-50">
                 <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 font-semibold transition-all">Annulla</button>
                 <button type="submit" className="px-8 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0">Salva Progetto</button>

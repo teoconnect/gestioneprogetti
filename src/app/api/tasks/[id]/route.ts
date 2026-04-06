@@ -16,6 +16,12 @@ export async function GET(
       where: { id: resolvedParams.id },
       include: {
         items: true,
+        users: {
+          select: {
+            id: true,
+            username: true,
+          }
+        }
       },
     });
     if (!task) {
@@ -65,6 +71,8 @@ export async function PUT(
       updateData.progress = parseInt(updateData.progress, 10);
     }
 
+    const { userIds, ...taskData } = updateData;
+
     // Recupera il task originale per confrontare i campi
     const originalTask = await prisma.task.findUnique({
       where: { id: resolvedParams.id }
@@ -99,7 +107,14 @@ export async function PUT(
 
     const task = await prisma.task.update({
       where: { id: resolvedParams.id },
-      data: updateData,
+      data: {
+        ...taskData,
+        ...(userIds ? {
+          users: {
+            set: userIds.map((id: string) => ({ id }))
+          }
+        } : {})
+      },
     });
 
     // Trova le differenze
