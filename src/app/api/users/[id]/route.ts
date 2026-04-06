@@ -42,8 +42,15 @@ export async function PUT(
     const usersStr = process.env.APP_USERS || "admin:admin123";
     const mainAdminUsername = usersStr.split(",")[0].split(":")[0];
 
-    if (username !== mainAdminUsername) {
-       // if it was the main admin, we allow editing password but not changing username easily or role to USER if it's the only one
+    const userToUpdate = await prisma.user.findUnique({ where: { id } });
+    if (!userToUpdate) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (userToUpdate.username === mainAdminUsername) {
+       // Prevent changing the main admin's username or demoting them
+       dataToUpdate.username = mainAdminUsername;
+       dataToUpdate.role = "ADMIN";
     }
 
     const updatedUser = await prisma.user.update({
