@@ -28,15 +28,36 @@ export async function POST(request: Request) {
       include: { task: true },
     });
 
-    if (taskItem.task.notificationsEnabled && taskItem.task.notificationEmail) {
-      await sendTaskModificationEmail(
-        taskItem.task.notificationEmail,
-        taskItem.task.name,
-        taskItem.task.projectId,
-        taskItem.taskId,
-        username,
-        [`Nuova riga dettaglio: ${taskItem.name}`]
-      ).catch(e => console.error("Error sending email on task item create:", e));
+    if (taskItem.task.notificationsEnabled) {
+      const taskWithUsers = await prisma.task.findUnique({
+        where: { id: taskItem.taskId },
+        include: {
+          users: { select: { email: true } },
+          project: { include: { users: { select: { email: true } } } }
+        }
+      });
+
+      if (taskWithUsers) {
+        let recipients: string[] = [];
+        const taskUsersWithEmail = taskWithUsers.users.filter(u => u.email).map(u => u.email as string);
+        if (taskUsersWithEmail.length > 0) {
+          recipients = taskUsersWithEmail;
+        } else {
+          const projectUsersWithEmail = taskWithUsers.project?.users.filter(u => u.email).map(u => u.email as string) || [];
+          recipients = projectUsersWithEmail;
+        }
+
+        if (recipients.length > 0) {
+          await sendTaskModificationEmail(
+            recipients,
+            taskWithUsers.name,
+            taskWithUsers.projectId,
+            taskWithUsers.id,
+            username,
+            [`Nuova riga dettaglio aggiunta: ${taskItem.name}`]
+          ).catch(e => console.error("Error sending email on task item create:", e));
+        }
+      }
     }
 
     return NextResponse.json(taskItem, { status: 201 });

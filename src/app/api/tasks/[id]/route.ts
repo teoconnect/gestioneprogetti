@@ -102,7 +102,15 @@ export async function PUT(
 
     // Recupera il task originale per confrontare i campi
     const originalTask = await prisma.task.findUnique({
-      where: { id: resolvedParams.id }
+      where: { id: resolvedParams.id },
+      include: {
+        users: { select: { email: true } },
+        project: {
+          include: {
+            users: { select: { email: true } }
+          }
+        }
+      }
     });
 
     // Gestione automatica bidirezionale dello stato e del progresso
@@ -159,15 +167,40 @@ export async function PUT(
       changedFields.push("Task aggiornato in modo massivo");
     }
 
-    if (task.notificationsEnabled && task.notificationEmail && changedFields.length > 0) {
-      await sendTaskModificationEmail(
-        task.notificationEmail,
-        task.name,
-        task.projectId,
-        task.id,
-        username,
-        changedFields
-      ).catch(e => console.error("Error sending email on task update:", e));
+    const updatedTaskWithRelations = await prisma.task.findUnique({
+      where: { id: task.id },
+      include: {
+        users: { select: { email: true } },
+        project: {
+          include: {
+            users: { select: { email: true } }
+          }
+        }
+      }
+    });
+
+    if (task.notificationsEnabled && changedFields.length > 0 && updatedTaskWithRelations) {
+      // Determina i destinatari: prima gli utenti del task, se non ce ne sono, gli utenti del progetto
+      let recipients: string[] = [];
+
+      const taskUsersWithEmail = updatedTaskWithRelations.users.filter(u => u.email).map(u => u.email as string);
+      if (taskUsersWithEmail.length > 0) {
+        recipients = taskUsersWithEmail;
+      } else {
+        const projectUsersWithEmail = updatedTaskWithRelations.project?.users.filter(u => u.email).map(u => u.email as string) || [];
+        recipients = projectUsersWithEmail;
+      }
+
+      if (recipients.length > 0) {
+        await sendTaskModificationEmail(
+          recipients,
+          task.name,
+          task.projectId,
+          task.id,
+          username,
+          changedFields
+        ).catch(e => console.error("Error sending email on task update:", e));
+      }
     }
 
     return NextResponse.json(task);

@@ -56,18 +56,36 @@ export async function PUT(
     const taskItem = await prisma.taskItem.update({
       where: { id: resolvedParams.id },
       data,
-      include: { task: true },
+      include: {
+        task: {
+          include: {
+            users: { select: { email: true } },
+            project: { include: { users: { select: { email: true } } } }
+          }
+        }
+      },
     });
 
-    if (taskItem.task.notificationsEnabled && taskItem.task.notificationEmail) {
-      await sendTaskModificationEmail(
-        taskItem.task.notificationEmail,
-        taskItem.task.name,
-        taskItem.task.projectId,
-        taskItem.taskId,
-        username,
-        [`Riga dettaglio modificata: ${taskItem.name}`]
-      ).catch(e => console.error("Error sending email on task item update:", e));
+    if (taskItem.task.notificationsEnabled) {
+      let recipients: string[] = [];
+      const taskUsersWithEmail = taskItem.task.users.filter(u => u.email).map(u => u.email as string);
+      if (taskUsersWithEmail.length > 0) {
+        recipients = taskUsersWithEmail;
+      } else {
+        const projectUsersWithEmail = taskItem.task.project?.users.filter(u => u.email).map(u => u.email as string) || [];
+        recipients = projectUsersWithEmail;
+      }
+
+      if (recipients.length > 0) {
+        await sendTaskModificationEmail(
+          recipients,
+          taskItem.task.name,
+          taskItem.task.projectId,
+          taskItem.taskId,
+          username,
+          [`Riga dettaglio modificata: ${taskItem.name}`]
+        ).catch(e => console.error("Error sending email on task item update:", e));
+      }
     }
 
     return NextResponse.json(taskItem);
@@ -117,15 +135,36 @@ export async function DELETE(
         }
       }
 
-      if (task && task.notificationsEnabled && task.notificationEmail) {
-        await sendTaskModificationEmail(
-          task.notificationEmail,
-          task.name,
-          task.projectId,
-          task.id,
-          username,
-          [`Riga dettaglio eliminata: ${existingItem.name}`]
-        ).catch(e => console.error("Error sending email on task item delete:", e));
+      if (task && task.notificationsEnabled) {
+        const taskWithUsers = await prisma.task.findUnique({
+          where: { id: task.id },
+          include: {
+            users: { select: { email: true } },
+            project: { include: { users: { select: { email: true } } } }
+          }
+        });
+
+        if (taskWithUsers) {
+          let recipients: string[] = [];
+          const taskUsersWithEmail = taskWithUsers.users.filter(u => u.email).map(u => u.email as string);
+          if (taskUsersWithEmail.length > 0) {
+            recipients = taskUsersWithEmail;
+          } else {
+            const projectUsersWithEmail = taskWithUsers.project?.users.filter(u => u.email).map(u => u.email as string) || [];
+            recipients = projectUsersWithEmail;
+          }
+
+          if (recipients.length > 0) {
+            await sendTaskModificationEmail(
+              recipients,
+              task.name,
+              task.projectId,
+              task.id,
+              username,
+              [`Riga dettaglio eliminata: ${existingItem.name}`]
+            ).catch(e => console.error("Error sending email on task item delete:", e));
+          }
+        }
       }
     }
 

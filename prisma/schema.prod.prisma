@@ -10,6 +10,7 @@ datasource db {
 model User {
   id           String    @id @default(uuid())
   username     String    @unique
+  email        String?   @unique
   passwordHash String
   role         String    @default("USER") // "ADMIN" or "USER"
   createdAt    DateTime  @default(now())
@@ -24,7 +25,6 @@ model Project {
   name        String
   description String?
   status      String   @default("active")
-  defaultNotificationEmail String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   tasks       Task[]
@@ -43,7 +43,6 @@ model Task {
   color        String?
   dependencies String?
   notificationsEnabled Boolean @default(false)
-  notificationEmail    String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)

@@ -17,16 +17,20 @@ if (process.env.SMTP_USER || process.env.SMTP_PASS) {
 
 const transporter = nodemailer.createTransport(transportConfig);
 
-export const sendEmail = async (to: string, subject: string, html: string) => {
+export const sendEmail = async (to: string | string[], subject: string, html: string) => {
   if (!process.env.SMTP_HOST) {
     console.warn('SMTP_HOST mancante. Impossibile inviare la email.');
     return;
   }
 
+  if (!to || (Array.isArray(to) && to.length === 0)) {
+     return;
+  }
+
   try {
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || '"Task Manager" <noreply@example.com>',
-      to,
+      to: Array.isArray(to) ? to.join(', ') : to,
       subject,
       html,
     });
@@ -37,7 +41,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
 };
 
 export const sendTaskModificationEmail = async (
-  email: string,
+  email: string | string[],
   taskName: string,
   projectId: string,
   taskId: string,
@@ -73,7 +77,7 @@ export const sendTaskModificationEmail = async (
 };
 
 export const sendTaskStartDateEmail = async (
-  email: string,
+  email: string | string[],
   taskName: string,
   projectId: string,
   taskId: string
@@ -92,7 +96,7 @@ export const sendTaskStartDateEmail = async (
 };
 
 export const sendTaskEndDateEmail = async (
-  email: string,
+  email: string | string[],
   taskName: string,
   projectId: string,
   taskId: string

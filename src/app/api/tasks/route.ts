@@ -85,6 +85,7 @@ export async function POST(request: Request) {
         progress: progress !== undefined ? progress : 0,
         color: data.color || null,
         dependencies: data.dependencies || null,
+        notificationsEnabled: data.notificationsEnabled || false,
         ...(userIds && userIds.length > 0 ? {
           users: {
             connect: userIds.map((id: string) => ({ id }))

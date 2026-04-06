@@ -83,6 +83,7 @@ export async function PUT(
     const { userIds, ...projectData } = data;
 
     const updateData: any = { ...projectData };
+    delete updateData.defaultNotificationEmail;
 
     if (userIds) {
        updateData.users = {

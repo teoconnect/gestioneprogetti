@@ -12,6 +12,7 @@ export default function UsersPage() {
 
   // Form State
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("USER");
   const [formError, setFormError] = useState("");
@@ -43,11 +44,13 @@ export default function UsersPage() {
     if (user) {
       setEditingUser(user);
       setUsername(user.username);
+      setEmail(user.email || "");
       setPassword(""); // Leave blank so we only update if typed
       setRole(user.role);
     } else {
       setEditingUser(null);
       setUsername("");
+      setEmail("");
       setPassword("");
       setRole("USER");
     }
@@ -72,7 +75,7 @@ export default function UsersPage() {
       const url = editingUser ? `/api/users/${editingUser.id}` : "/api/users";
       const method = editingUser ? "PUT" : "POST";
 
-      const body: any = { username, role };
+      const body: any = { username, email, role };
       if (password) body.password = password;
 
       const res = await fetch(url, {
@@ -142,7 +145,7 @@ export default function UsersPage() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="p-4 font-semibold text-gray-600 text-sm">Username</th>
+              <th className="p-4 font-semibold text-gray-600 text-sm">Utente</th>
               <th className="p-4 font-semibold text-gray-600 text-sm">Ruolo</th>
               <th className="p-4 font-semibold text-gray-600 text-sm">Creazione</th>
               <th className="p-4 font-semibold text-gray-600 text-sm text-right">Azioni</th>
@@ -151,11 +154,14 @@ export default function UsersPage() {
           <tbody>
             {users.map((user) => (
               <tr key={user.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                <td className="p-4 font-medium text-gray-900 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold uppercase">
+                <td className="p-4 font-medium text-gray-900 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold uppercase shrink-0">
                     {user.username.charAt(0)}
                   </div>
-                  {user.username}
+                  <div className="flex flex-col">
+                    <span>{user.username}</span>
+                    <span className="text-xs text-gray-400 font-normal">{user.email || <span className="italic">Nessuna email</span>}</span>
+                  </div>
                 </td>
                 <td className="p-4">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -223,6 +229,20 @@ export default function UsersPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email {role === "USER" && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="email"
+                  required={role === "USER"}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition"
+                  placeholder="utente@esempio.com"
                 />
               </div>
 

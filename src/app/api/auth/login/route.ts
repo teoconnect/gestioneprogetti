@@ -24,6 +24,7 @@ export async function POST(request: Request) {
             username: confUser,
             passwordHash,
             role: i === 0 ? "ADMIN" : "USER", // First user is ADMIN
+            email: i === 0 ? "admin@example.com" : `user${i}@example.com`,
           },
         });
       }
