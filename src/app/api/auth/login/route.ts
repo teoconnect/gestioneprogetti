@@ -1,31 +1,56 @@
 import { NextResponse } from "next/server";
 import { createToken } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   try {
     const { username, password } = await request.json();
 
+    // 1. Sync users from env if they don't exist
     const usersStr = process.env.APP_USERS || "admin:admin123,user:user123";
     const usersList = usersStr.split(",").map((u) => u.trim()).filter(Boolean);
 
-    let isValid = false;
+    for (let i = 0; i < usersList.length; i++) {
+      const [confUser, confPass] = usersList[i].split(":");
+      const existingUser = await prisma.user.findUnique({
+        where: { username: confUser },
+      });
 
-    for (const userConfig of usersList) {
-      const [confUser, confPass] = userConfig.split(":");
-      if (confUser === username && confPass === password) {
-        isValid = true;
-        break;
+      if (!existingUser) {
+        const passwordHash = await bcrypt.hash(confPass, 10);
+        await prisma.user.create({
+          data: {
+            username: confUser,
+            passwordHash,
+            role: i === 0 ? "ADMIN" : "USER", // First user is ADMIN
+          },
+        });
       }
     }
 
-    if (!isValid) {
+    // 2. Validate against Database
+    const user = await prisma.user.findUnique({
+      where: { username },
+    });
+
+    if (!user) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
     }
 
-    const token = await createToken(username);
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401 }
+      );
+    }
+
+    const token = await createToken(user.id, user.username, user.role);
 
     const response = NextResponse.json(
       { success: true },

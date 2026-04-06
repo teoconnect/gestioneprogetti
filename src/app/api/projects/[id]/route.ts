@@ -12,9 +12,21 @@ export async function GET(
     const project = await prisma.project.findUnique({
       where: { id: resolvedParams.id },
       include: {
+        users: {
+          select: {
+            id: true,
+            username: true,
+          }
+        },
         tasks: {
           include: {
             items: true,
+            users: {
+              select: {
+                id: true,
+                username: true
+              }
+            }
           },
           orderBy: { startDate: "asc" },
         },
@@ -39,9 +51,20 @@ export async function PUT(
   try {
     const resolvedParams = await params;
     const data = await request.json();
+
+    const { userIds, ...projectData } = data;
+
+    const updateData: any = { ...projectData };
+
+    if (userIds) {
+       updateData.users = {
+           set: userIds.map((id: string) => ({ id }))
+       };
+    }
+
     const project = await prisma.project.update({
       where: { id: resolvedParams.id },
-      data,
+      data: updateData,
     });
     return NextResponse.json(project);
   } catch (error) {

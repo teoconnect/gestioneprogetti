@@ -14,6 +14,11 @@ type TaskItem = {
   value: string | null;
 };
 
+type User = {
+  id: string;
+  username: string;
+};
+
 type Task = {
   id: string;
   name: string;
@@ -27,6 +32,7 @@ type Task = {
   notificationsEnabled: boolean;
   notificationEmail: string | null;
   items: TaskItem[];
+  users?: User[];
 };
 
 type Project = {
@@ -37,6 +43,7 @@ type Project = {
   status: string;
   defaultNotificationEmail: string | null;
   tasks: Task[];
+  users?: User[];
 };
 
 export default function ProjectDetails({ params }: { params: Promise<{ id: string }> }) {
@@ -70,6 +77,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [taskNotificationEmail, setTaskNotificationEmail] = useState("");
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskSelectedUsers, setTaskSelectedUsers] = useState<string[]>([]);
 
   // Item form
   const [itemType, setItemType] = useState("text");
@@ -212,7 +220,14 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskNotificationEmail("");
     setIsEditingTask(false);
     setEditingTaskId(null);
+    setTaskSelectedUsers([]);
   };
+
+  const toggleTaskUserSelection = (userId: string) => {
+    setTaskSelectedUsers(prev =>
+        prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  }
 
   const handleCreateOrUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,6 +250,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           dependencies: taskDependencies.join(","),
           notificationsEnabled: taskNotificationsEnabled,
           notificationEmail: taskNotificationEmail || null,
+          userIds: taskSelectedUsers,
         }),
       });
       if (res.ok) {
@@ -258,6 +274,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setTaskDependencies(task.dependencies ? task.dependencies.split(",").map(d => d.trim()).filter(Boolean) : []);
     setTaskNotificationsEnabled(task.notificationsEnabled);
     setTaskNotificationEmail(task.notificationEmail || "");
+    setTaskSelectedUsers(task.users ? task.users.map((u: any) => u.id) : []);
     setIsEditingTask(true);
     setEditingTaskId(task.id);
     setShowTaskModal(true);
@@ -731,6 +748,17 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     </div>
                   </div>
                   {task.description && <p className="text-gray-500 mt-4 text-sm leading-relaxed">{task.description}</p>}
+
+                  {task.users && task.users.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                       {task.users.map(u => (
+                          <span key={u.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                             <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[8px] font-bold uppercase">{u.username.charAt(0)}</div>
+                             {u.username}
+                          </span>
+                       ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:border-l border-gray-100 sm:pl-6">
                   <button
@@ -953,6 +981,27 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
               </div>
+
+              {project?.users && project.users.length > 0 && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Assegna Task a Utenti (Membri del progetto)</label>
+                    <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+                      {project.users.map(u => (
+                        <label key={u.id} className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={taskSelectedUsers.includes(u.id)}
+                            onChange={() => toggleTaskUserSelection(u.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{u.username}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
                 <button type="button" onClick={() => { setShowTaskModal(false); resetTaskForm(); }} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>

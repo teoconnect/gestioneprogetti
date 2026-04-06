@@ -1,5 +1,53 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyAuth } from "@/lib/auth";
+
+async function getSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth-token")?.value;
+  if (!token) return null;
+  try {
+    return await verifyAuth(token);
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function GET() {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const whereClause = session.role === "ADMIN" ? {} : {
+      users: {
+        some: {
+          id: session.id,
+        },
+      },
+    };
+
+    const tasks = await prisma.task.findMany({
+      where: whereClause,
+      include: {
+        project: {
+          select: {
+            name: true,
+            code: true,
+          }
+        }
+      },
+      orderBy: { startDate: "asc" },
+    });
+    return NextResponse.json(tasks);
+  } catch (error) {
+    console.error("GET /api/tasks error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch tasks" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -26,15 +74,22 @@ export async function POST(request: Request) {
       else if (status === "IN_PROGRESS" && (progress === 0 || progress === 100)) progress = 50;
     }
 
+    const { userIds, ...taskData } = data;
+
     const task = await prisma.task.create({
       data: {
-        ...data,
+        ...taskData,
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
         status: status || "TODO",
         progress: progress !== undefined ? progress : 0,
         color: data.color || null,
         dependencies: data.dependencies || null,
+        ...(userIds && userIds.length > 0 ? {
+          users: {
+            connect: userIds.map((id: string) => ({ id }))
+          }
+        } : {})
       },
     });
     return NextResponse.json(task, { status: 201 });

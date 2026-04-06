@@ -14,14 +14,14 @@ export const verifyAuth = async (token: string) => {
       token,
       new TextEncoder().encode(getJwtSecretKey())
     );
-    return verified.payload;
+    return verified.payload as { id: string; username: string; role: string; iat?: number; exp?: number };
   } catch (error) {
     throw new Error("Your token has expired.");
   }
 };
 
-export const createToken = async (username: string) => {
-  const token = await new SignJWT({ username })
+export const createToken = async (id: string, username: string, role: string) => {
+  const token = await new SignJWT({ id, username, role })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h")
