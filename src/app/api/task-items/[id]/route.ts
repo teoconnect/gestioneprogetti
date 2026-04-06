@@ -59,22 +59,14 @@ export async function PUT(
       include: {
         task: {
           include: {
-            users: { select: { email: true } },
-            project: { include: { users: { select: { email: true } } } }
+            notifiedUsers: { select: { email: true } }
           }
         }
       },
     });
 
-    if (taskItem.task.notificationsEnabled) {
-      let recipients: string[] = [];
-      const taskUsersWithEmail = taskItem.task.users.filter(u => u.email).map(u => u.email as string);
-      if (taskUsersWithEmail.length > 0) {
-        recipients = taskUsersWithEmail;
-      } else {
-        const projectUsersWithEmail = taskItem.task.project?.users.filter(u => u.email).map(u => u.email as string) || [];
-        recipients = projectUsersWithEmail;
-      }
+    if (taskItem.task.notifiedUsers.length > 0) {
+      const recipients = taskItem.task.notifiedUsers.filter(u => u.email).map(u => u.email as string);
 
       if (recipients.length > 0) {
         await sendTaskModificationEmail(
@@ -135,24 +127,16 @@ export async function DELETE(
         }
       }
 
-      if (task && task.notificationsEnabled) {
+      if (task) {
         const taskWithUsers = await prisma.task.findUnique({
           where: { id: task.id },
           include: {
-            users: { select: { email: true } },
-            project: { include: { users: { select: { email: true } } } }
+            notifiedUsers: { select: { email: true } }
           }
         });
 
-        if (taskWithUsers) {
-          let recipients: string[] = [];
-          const taskUsersWithEmail = taskWithUsers.users.filter(u => u.email).map(u => u.email as string);
-          if (taskUsersWithEmail.length > 0) {
-            recipients = taskUsersWithEmail;
-          } else {
-            const projectUsersWithEmail = taskWithUsers.project?.users.filter(u => u.email).map(u => u.email as string) || [];
-            recipients = projectUsersWithEmail;
-          }
+        if (taskWithUsers && taskWithUsers.notifiedUsers.length > 0) {
+          const recipients = taskWithUsers.notifiedUsers.filter(u => u.email).map(u => u.email as string);
 
           if (recipients.length > 0) {
             await sendTaskModificationEmail(

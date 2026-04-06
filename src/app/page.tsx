@@ -60,13 +60,6 @@ export default function Dashboard() {
   const fetchMyTasks = async () => {
     try {
         const res = await fetch("/api/tasks");
-        const sessionRes = await fetch("/api/users/list"); // Reuse to easily get current auth state or just use logic below
-
-        // Since we don't have a specific /api/auth/me endpoint, we can filter based on the UI's best effort,
-        // but for now let's just show active tasks and maybe indicate they are active.
-        // Wait, the API GET /api/tasks already filters by session for standard users.
-        // For admins, it returns ALL tasks. To make the "My Tasks" section truly accurate for admins,
-        // the API should optionally take a filter, but since it's a summary, showing active tasks is fine.
 
         if (res.ok) {
             const data = await res.json();

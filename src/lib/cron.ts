@@ -19,27 +19,21 @@ export const initCronJobs = () => {
       // Troviamo i task che INIZIANO oggi e hanno le notifiche attivate
       const tasksStartingToday = await prisma.task.findMany({
         where: {
-          notificationsEnabled: true,
           startDate: {
             gte: today,
             lte: endOfToday,
           },
+          notifiedUsers: {
+             some: {} // Only tasks that have at least one notified user
+          }
         },
         include: {
-          users: { select: { email: true } },
-          project: { include: { users: { select: { email: true } } } }
+          notifiedUsers: { select: { email: true } },
         }
       });
 
       for (const task of tasksStartingToday) {
-        let recipients: string[] = [];
-        const taskUsersWithEmail = task.users.filter((u: any) => u.email).map((u: any) => u.email as string);
-        if (taskUsersWithEmail.length > 0) {
-          recipients = taskUsersWithEmail;
-        } else {
-          const projectUsersWithEmail = task.project?.users.filter((u: any) => u.email).map((u: any) => u.email as string) || [];
-          recipients = projectUsersWithEmail;
-        }
+        const recipients = task.notifiedUsers.filter((u: any) => u.email).map((u: any) => u.email as string);
 
         if (recipients.length > 0) {
           await sendTaskStartDateEmail(
@@ -54,27 +48,21 @@ export const initCronJobs = () => {
       // Troviamo i task che FINISCONO oggi e hanno le notifiche attivate
       const tasksEndingToday = await prisma.task.findMany({
         where: {
-          notificationsEnabled: true,
           endDate: {
             gte: today,
             lte: endOfToday,
           },
+          notifiedUsers: {
+             some: {}
+          }
         },
         include: {
-          users: { select: { email: true } },
-          project: { include: { users: { select: { email: true } } } }
+          notifiedUsers: { select: { email: true } },
         }
       });
 
       for (const task of tasksEndingToday) {
-        let recipients: string[] = [];
-        const taskUsersWithEmail = task.users.filter((u: any) => u.email).map((u: any) => u.email as string);
-        if (taskUsersWithEmail.length > 0) {
-          recipients = taskUsersWithEmail;
-        } else {
-          const projectUsersWithEmail = task.project?.users.filter((u: any) => u.email).map((u: any) => u.email as string) || [];
-          recipients = projectUsersWithEmail;
-        }
+        const recipients = task.notifiedUsers.filter((u: any) => u.email).map((u: any) => u.email as string);
 
         if (recipients.length > 0) {
           await sendTaskEndDateEmail(
