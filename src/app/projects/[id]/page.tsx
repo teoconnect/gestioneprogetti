@@ -63,6 +63,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   // Settings Form
   const [defaultEmail, setDefaultEmail] = useState("");
+  const [projectSelectedUsers, setProjectSelectedUsers] = useState<string[]>([]);
+  const [allSystemUsers, setAllSystemUsers] = useState<any[]>([]);
 
   // Task form
   const [taskName, setTaskName] = useState("");
@@ -122,7 +124,20 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     fetchProject();
+    fetchAllSystemUsers();
   }, [fetchProject]);
+
+  const fetchAllSystemUsers = async () => {
+    try {
+      const res = await fetch("/api/users/list");
+      if (res.ok) {
+        const data = await res.json();
+        setAllSystemUsers(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch all users", error);
+    }
+  }
 
   const handleProjectUpdate = async (field: "name" | "description" | "status", value: string) => {
     if (!project) return;
@@ -155,7 +170,10 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       const res = await fetch(`/api/projects/${project.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ defaultNotificationEmail: defaultEmail }),
+        body: JSON.stringify({
+          defaultNotificationEmail: defaultEmail,
+          userIds: projectSelectedUsers
+        }),
       });
       if (res.ok) {
         fetchProject();
@@ -165,6 +183,12 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       console.error("Error saving project settings", error);
     }
   };
+
+  const toggleProjectUserSelection = (userId: string) => {
+    setProjectSelectedUsers(prev =>
+        prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  }
 
   const handleTestEmail = async () => {
     if (!project || !defaultEmail) {
@@ -656,6 +680,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           <button
             onClick={() => {
               setDefaultEmail(project?.defaultNotificationEmail || "");
+              setProjectSelectedUsers(project?.users ? project.users.map(u => u.id) : []);
               setShowSettingsModal(true);
             }}
             className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all border border-gray-200 font-bold text-sm shadow-sm"
@@ -1042,6 +1067,28 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   Se impostata, questa email verrà abilitata di default per i nuovi task creati in questo progetto.
                 </p>
               </div>
+
+              {allSystemUsers.length > 0 && (
+                <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">Membri del Progetto</label>
+                   <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+                       {allSystemUsers.map(user => (
+                           <label key={user.id} className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer">
+                               <input
+                                   type="checkbox"
+                                   checked={projectSelectedUsers.includes(user.id)}
+                                   onChange={() => toggleProjectUserSelection(user.id)}
+                                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                               />
+                               <span className="text-sm text-gray-700">{user.username} {user.role === 'ADMIN' && '(Admin)'}</span>
+                           </label>
+                       ))}
+                   </div>
+                   <p className="text-xs text-gray-500 mt-2">
+                     Solo i membri selezionati (e gli Admin) potranno vedere questo progetto e i suoi task.
+                   </p>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
                 <button
