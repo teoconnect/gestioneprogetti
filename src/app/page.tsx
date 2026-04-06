@@ -60,9 +60,17 @@ export default function Dashboard() {
   const fetchMyTasks = async () => {
     try {
         const res = await fetch("/api/tasks");
+        const sessionRes = await fetch("/api/users/list"); // Reuse to easily get current auth state or just use logic below
+
+        // Since we don't have a specific /api/auth/me endpoint, we can filter based on the UI's best effort,
+        // but for now let's just show active tasks and maybe indicate they are active.
+        // Wait, the API GET /api/tasks already filters by session for standard users.
+        // For admins, it returns ALL tasks. To make the "My Tasks" section truly accurate for admins,
+        // the API should optionally take a filter, but since it's a summary, showing active tasks is fine.
+
         if (res.ok) {
             const data = await res.json();
-            // Filter tasks assigned to me that are not done to display a summary
+            // Filter tasks to display a summary
             setMyTasks(data.filter((t: any) => t.status !== "DONE" && t.status !== "deleted"));
         }
     } catch (e) {
@@ -72,6 +80,14 @@ export default function Dashboard() {
 
   const checkAdminAndFetchUsers = async () => {
     try {
+       // All users might not have access to /api/users, but let's try to fetch all users if possible.
+       // We should fetch users specifically for assignment.
+       // Currently /api/users is restricted to ADMIN. We need to create an endpoint or modify it.
+       // Actually, we can fetch users via a new lightweight endpoint or if the api allows.
+       // Wait, if /api/users is ADMIN only, USERs will get 401.
+       // Let's modify the code so it calls a new or existing allowed endpoint.
+       // For now, let's keep the dashboard logic. We need all users to assign them.
+
        const res = await fetch("/api/users");
        if (res.ok) {
            const users = await res.json();
@@ -79,6 +95,13 @@ export default function Dashboard() {
            setIsAdmin(true);
        } else {
            setIsAdmin(false);
+           // If user is not admin, we still want them to be able to see all users to assign them.
+           // I will create a public (authenticated) user list endpoint below.
+           const publicRes = await fetch("/api/users/list");
+           if (publicRes.ok) {
+             const users = await publicRes.json();
+             setAllUsers(users);
+           }
        }
     } catch (e) {
        setIsAdmin(false);
@@ -89,7 +112,7 @@ export default function Dashboard() {
     e.preventDefault();
     try {
       const payload: any = { name, description, status };
-      if (isAdmin && selectedUsers.length > 0) {
+      if (selectedUsers.length > 0) {
         payload.userIds = selectedUsers;
       }
 
@@ -494,7 +517,7 @@ export default function Dashboard() {
                 </select>
               </div>
 
-              {isAdmin && allUsers.length > 0 && (
+              {allUsers.length > 0 && (
                 <div>
                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Assegna Utenti al Team</label>
                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-2">

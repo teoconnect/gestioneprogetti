@@ -56,24 +56,29 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const data = await request.json();
     const projectCode = `PRJ-${Date.now()}`;
 
     // estrai userIds per collegarli al progetto
-    const { userIds, ...projectData } = data;
+    let { userIds, ...projectData } = data;
+
+    if (!userIds) userIds = [];
+
+    // L'utente che crea il progetto deve sempre esserne membro
+    if (!userIds.includes(session.id)) {
+       userIds.push(session.id);
+    }
 
     const project = await prisma.project.create({
       data: {
         ...projectData,
         code: projectCode,
-        ...(userIds && userIds.length > 0 ? {
-          users: {
-            connect: userIds.map((id: string) => ({ id }))
-          }
-        } : {})
+        users: {
+          connect: userIds.map((id: string) => ({ id }))
+        }
       },
     });
     return NextResponse.json(project, { status: 201 });
