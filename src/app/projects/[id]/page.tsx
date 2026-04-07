@@ -68,6 +68,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [taskDesc, setTaskDesc] = useState("");
   const [taskStart, setTaskStart] = useState("");
   const [taskEnd, setTaskEnd] = useState("");
+  const [taskDuration, setTaskDuration] = useState("");
   const [taskStatus, setTaskStatus] = useState("TODO");
   const [taskProgress, setTaskProgress] = useState("0");
   const [taskColor, setTaskColor] = useState("");
@@ -278,11 +279,56 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setShowTaskModal(true);
   };
 
+  const calculateDuration = (start: string, end: string) => {
+    if (!start || !end) return "";
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffTime = endDate.getTime() - startDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays.toString();
+  };
+
+  const calculateEndDate = (start: string, duration: string) => {
+    if (!start || !duration) return "";
+    const startDate = new Date(start);
+    const days = parseInt(duration, 10);
+    if (isNaN(days)) return "";
+    startDate.setDate(startDate.getDate() + days);
+    return startDate.toISOString().split('T')[0];
+  };
+
+  const handleTaskStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newStart = e.target.value;
+    setTaskStart(newStart);
+    if (newStart && taskEnd) {
+      setTaskDuration(calculateDuration(newStart, taskEnd));
+    } else if (newStart && taskDuration) {
+      setTaskEnd(calculateEndDate(newStart, taskDuration));
+    }
+  };
+
+  const handleTaskEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEnd = e.target.value;
+    setTaskEnd(newEnd);
+    if (newEnd && taskStart) {
+      setTaskDuration(calculateDuration(taskStart, newEnd));
+    }
+  };
+
+  const handleTaskDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDuration = e.target.value;
+    setTaskDuration(newDuration);
+    if (newDuration && taskStart) {
+      setTaskEnd(calculateEndDate(taskStart, newDuration));
+    }
+  };
+
   const resetTaskForm = () => {
     setTaskName("");
     setTaskDesc("");
     setTaskStart("");
     setTaskEnd("");
+    setTaskDuration("");
     setTaskStatus("TODO");
     setTaskProgress("0");
     setTaskColor("");
@@ -1143,14 +1189,18 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
                 <textarea value={taskDesc} onChange={e => setTaskDesc(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" rows={3}></textarea>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Inizio</label>
-                  <input required type="date" value={taskStart} onChange={e => setTaskStart(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                  <input required type="date" value={taskStart} onChange={handleTaskStartChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Durata (giorni)</label>
+                  <input type="number" value={taskDuration} onChange={handleTaskDurationChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Fine</label>
-                  <input required type="date" value={taskEnd} onChange={e => setTaskEnd(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                  <input required type="date" value={taskEnd} onChange={handleTaskEndChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
