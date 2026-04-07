@@ -4,15 +4,22 @@ Un'applicazione web sviluppata con **Next.js**, **Prisma** e database (**SQLite*
 
 ## 🌟 Funzionalità
 
-- **Autenticazione Sicura**: Login tramite credenziali configurabili (amministratore e utenti) protetto da JWT (JSON Web Tokens).
-- **Gestione Progetti**:
-  - Creazione, visualizzazione ed eliminazione dei progetti.
-  - Assegnazione di codici univoci e stati personalizzati.
-- **Gestione Task**:
-  - Aggiunta di task con date di inizio e fine.
-  - Collegamento di sotto-elementi (righe) ai task (testo, numeri, allegati, date).
-- **Diagramma di Gantt Integrato**: Visualizzazione interattiva dei task nel tempo, con supporto alle viste per giorno, settimana e mese.
-- **Design Moderno e Responsivo**: Interfaccia pulita e intuitiva realizzata con **Tailwind CSS**.
+- **Autenticazione Sicura e Ruoli**: Login tramite credenziali protetto da JWT. Supporto ruoli (Admin e User) per visibilità controllata su progetti e task.
+- **Gestione Avanzata Progetti**:
+  - Creazione, visualizzazione, modifica stato.
+  - Calcolo automatico avanzamento globale.
+  - **Duplicazione rapida**: Duplica interi progetti con tutti i task (azzerandone stato e valori per ripartire da zero).
+  - Eliminazione tramite "Soft Delete" (Cestino dedicato per recupero).
+- **Gestione Potenziata Task**:
+  - Aggiunta di task con date di inizio, fine, colore e dipendenze.
+  - Collegamento di sotto-elementi (righe) ai task (testo, numeri, allegati fisici, date).
+  - Sincronizzazione automatica tra stato (es. Completato) e progresso (100%).
+  - Spostamento di massa (Bulk Offset) delle date dei task.
+- **Notifiche Email Automatiche**: Pattern "Watchers" per ricevere email alla creazione, modifica e notifica giornaliera automatica (tramite cron) per i task in scadenza.
+- **Diagramma di Gantt Interattivo**: Visualizzazione temporale tramite `frappe-gantt`, con drag & drop disabilitato per dipendenze automatiche, viste dinamiche (giorno, settimana, mese).
+- **UI Moderna e Responsiva "Premium"**:
+  - Layout ibridi (Tabelle su Desktop, Card compattate "schiacciate" su Mobile).
+  - Finestre modali e UI pulita in Tailwind CSS v4.
 
 ---
 
@@ -22,13 +29,21 @@ Un'applicazione web sviluppata con **Next.js**, **Prisma** e database (**SQLite*
 Accesso protetto per gli utenti dell'applicazione.
 ![Pagina di Login](./public/screenshots/login.png)
 
-### 2. Dashboard dei Progetti
-Panoramica completa dei progetti attivi, con possibilità di crearne di nuovi.
-![Dashboard dei Progetti](./public/screenshots/projects_dashboard.png)
+### 2. Dashboard Interattiva
+Panoramica completa dei progetti attivi assegnati all'utente e task in evidenza.
+![Dashboard dei Progetti](./public/screenshots/dashboard.png)
 
 ### 3. Dettagli Progetto e Diagramma di Gantt
-Gestione dei task di un singolo progetto e visualizzazione temporale tramite Gantt.
+Gestione avanzata dei task, statistiche di avanzamento, duplicazione e vista Gantt.
 ![Dettagli Progetto e Gantt](./public/screenshots/project_detail.png)
+
+### 4. Gestione Dettaglio Task
+Modal dedicata per gestire lo stato, l'avanzamento, le dipendenze e gli allegati.
+![Dettagli Task](./public/screenshots/task_detail.png)
+
+### 5. Cestino (Soft Delete)
+Sezione sicura per visualizzare, ripristinare o eliminare permanentemente i progetti cancellati.
+![Cestino Progetti](./public/screenshots/trash.png)
 
 ---
 
