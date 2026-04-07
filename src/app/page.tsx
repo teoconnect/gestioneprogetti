@@ -34,6 +34,10 @@ export default function Dashboard() {
   // New states for personal tasks summary
   const [myTasks, setMyTasks] = useState<any[]>([]);
 
+  // State for task modal directly from dashboard
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskProjectId, setSelectedTaskProjectId] = useState<string | null>(null);
+
   const fetchProjects = async () => {
     try {
       const res = await fetch("/api/projects");
@@ -243,8 +247,11 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold text-gray-800 mb-4 tracking-tight">I miei Task Attivi</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {myTasks.slice(0, 6).map(task => (
-                    <Link key={task.id} href={`/projects/${task.projectId}`} className="block">
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-blue-200 transition-all">
+                    <div key={task.id} className="block cursor-pointer" onClick={() => {
+                        setSelectedTaskId(task.id);
+                        setSelectedTaskProjectId(task.projectId);
+                    }}>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-blue-200 transition-all h-full">
                             <div className="flex justify-between items-start mb-2">
                                 <span className="text-[10px] font-bold text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded">{task.project?.code}</span>
                                 <span className={`text-[10px] font-bold uppercase ${task.status === 'IN_PROGRESS' ? 'text-blue-600' : 'text-gray-500'}`}>
@@ -260,7 +267,7 @@ export default function Dashboard() {
                                 <div className="bg-blue-600 h-full rounded-full" style={{ width: `${task.progress}%` }}></div>
                             </div>
                         </div>
-                    </Link>
+                    </div>
                 ))}
             </div>
         </div>
@@ -534,6 +541,27 @@ export default function Dashboard() {
                 <button type="submit" className="px-8 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0">Salva Progetto</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Task Modal (iframe) from Dashboard */}
+      {selectedTaskId && selectedTaskProjectId && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => { setSelectedTaskId(null); setSelectedTaskProjectId(null); }}>
+          <div className="bg-white rounded-xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col" style={{ height: '80vh' }} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-800">Dettaglio Task</h2>
+              <button onClick={() => { setSelectedTaskId(null); setSelectedTaskProjectId(null); }} className="text-gray-500 hover:text-gray-800 transition p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <div className="flex-1 w-full bg-gray-100">
+              <iframe
+                src={`/projects/${selectedTaskProjectId}/task/${selectedTaskId}?modal=true`}
+                className="w-full h-full border-0"
+                title="Task Details"
+              />
+            </div>
           </div>
         </div>
       )}
