@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings, ChevronUp, ChevronDown, ChevronRight, Search, Filter } from "lucide-react";
 import GanttChartWrapper from "@/components/GanttChartWrapper";
 import { calculateProgress } from "@/lib/utils";
 
@@ -101,6 +101,23 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   // Gantt Visibility state
   const [isGanttVisible, setIsGanttVisible] = useState(true);
+
+  // Task list filters, pagination and accordion
+  const [expandedTasks, setExpandedTasks] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const tasksPerPage = 10;
+
+  const toggleTaskExpansion = (taskId: string) => {
+    setExpandedTasks(prev =>
+      prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+    );
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   // Gantt drag state refs
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -517,6 +534,20 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   const avgProgress = calculateProgress(project.tasks);
 
+  const filteredTasks = project.tasks
+    .filter(t => {
+      const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "ALL" || t.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+  const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
+  const paginatedTasks = filteredTasks.slice(
+    (currentPage - 1) * tasksPerPage,
+    currentPage * tasksPerPage
+  );
+
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
       <Link href="/" className="group inline-flex items-center text-gray-500 hover:text-blue-600 mb-6 transition-all font-semibold">
@@ -664,12 +695,37 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         )}
       </div>
 
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-end gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Timeline & Task</h2>
            <p className="text-gray-400 text-sm font-medium">Organizza le attività e monitora le scadenze</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <div className="flex gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                placeholder="Cerca task..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              />
+            </div>
+            <div className="relative flex-1 sm:w-40">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
+              >
+                <option value="ALL">Tutti</option>
+                <option value="TODO">Da fare</option>
+                <option value="IN_PROGRESS">In corso</option>
+                <option value="DONE">Completato</option>
+              </select>
+            </div>
+          </div>
           <button
             onClick={() => {
               setProjectSelectedUsers(project?.users ? project.users.map(u => u.id) : []);
@@ -690,121 +746,148 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <div className="space-y-6">
-        {project.tasks.length === 0 ? (
+      <div className="space-y-3">
+        {paginatedTasks.length === 0 ? (
           <div className="text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            Nessun task per questo progetto.
+            Nessun task trovato.
           </div>
         ) : (
-          project.tasks.map((task) => (
-            <div key={task.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="bg-white px-6 py-5 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                <div className="flex-1 w-full">
-                  <div className="flex items-center gap-3 mb-2">
-                     <div className="w-2 h-6 rounded-full" style={{ backgroundColor: task.color || '#3b82f6' }}></div>
-                     <h3 className="text-xl font-bold text-gray-900 leading-tight">{task.name}</h3>
+          paginatedTasks.map((task) => {
+            const isExpanded = expandedTasks.includes(task.id);
+            return (
+            <div key={task.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:border-blue-300 transition-colors">
+              {/* Task Header - Compact Accordion */}
+              <div
+                className="px-4 py-3 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-gray-50 transition-colors"
+                onClick={() => toggleTaskExpansion(task.id)}
+              >
+                <div className="flex-1 w-full flex items-center gap-3">
+                  <div className={`transition-transform duration-200 text-gray-400 ${isExpanded ? 'rotate-90' : ''}`}>
+                    <ChevronRight size={20} />
                   </div>
-                  <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={14} className="text-gray-300" />
-                      <span>{new Date(task.startDate).toLocaleDateString()} → {new Date(task.endDate).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-300">|</span>
-                      <span className="text-gray-500">Stato:</span>
-                      {editingTaskStatusId === task.id ? (
-                        <select
-                          autoFocus
-                          value={task.status}
-                          onChange={(e) => handleInlineTaskUpdate(task.id, "status", e.target.value)}
-                          onBlur={() => setEditingTaskStatusId(null)}
-                          className="border border-blue-500 rounded-lg px-2 py-0.5 text-xs bg-white text-blue-600 outline-none"
-                        >
-                          <option value="TODO">Da fare</option>
-                          <option value="IN_PROGRESS">In corso</option>
-                          <option value="DONE">Completato</option>
-                        </select>
-                      ) : (
-                        <span
-                          className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${task.status === 'DONE' ? 'bg-green-50 text-green-600' : task.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-500'}`}
-                          onClick={() => setEditingTaskStatusId(task.id)}
-                          title="Clicca per modificare lo stato"
-                        >
-                          {task.status === 'TODO' ? 'Da fare' : task.status === 'IN_PROGRESS' ? 'In corso' : 'Completato'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 ml-auto sm:ml-0">
-                      <div className="w-24 sm:w-32 bg-gray-100 h-2 rounded-full overflow-hidden shadow-inner relative">
-                         <div className="bg-blue-500 h-full transition-all duration-700" style={{ width: `${task.progress}%` }}></div>
-                      </div>
-                      {editingTaskProgressId === task.id ? (
-                        <input
-                          type="number"
-                          autoFocus
-                          min="0"
-                          max="100"
-                          value={inlineTaskProgress}
-                          onChange={(e) => setInlineTaskProgress(e.target.value)}
-                          onBlur={() => handleInlineTaskUpdate(task.id, "progress", inlineTaskProgress)}
-                          onKeyDown={(e) => handleInlineProgressKeyDown(e, task.id)}
-                          className="w-14 border border-blue-500 rounded-lg px-1 py-0.5 text-xs text-center font-black text-blue-600 outline-none"
-                        />
-                      ) : (
-                        <span
-                          className="font-black text-blue-600 cursor-pointer min-w-[3ch] text-right"
-                          onClick={() => {
-                            setEditingTaskProgressId(task.id);
-                            setInlineTaskProgress(task.progress.toString());
-                          }}
-                          title="Clicca per modificare il progresso"
-                        >
-                          {task.progress}%
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {task.description && <p className="text-gray-500 mt-4 text-sm leading-relaxed">{task.description}</p>}
+                  <div className="w-1.5 h-8 rounded-full shrink-0" style={{ backgroundColor: task.color || '#3b82f6' }}></div>
 
-                  {task.users && task.users.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                       {task.users.map(u => (
-                          <span key={u.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                             <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[8px] font-bold uppercase">{u.username.charAt(0)}</div>
-                             {u.username}
-                          </span>
-                       ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                      <h3 className="text-base font-bold text-gray-900 truncate">{task.name}</h3>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Calendar size={12} className="text-gray-400" />
+                          <span>{new Date(task.startDate).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-gray-300 hidden sm:inline">|</span>
+                          {editingTaskStatusId === task.id ? (
+                            <select
+                              autoFocus
+                              value={task.status}
+                              onChange={(e) => handleInlineTaskUpdate(task.id, "status", e.target.value)}
+                              onBlur={() => setEditingTaskStatusId(null)}
+                              className="border border-blue-500 rounded px-1 py-0.5 text-[10px] bg-white text-blue-600 outline-none"
+                            >
+                              <option value="TODO">Da fare</option>
+                              <option value="IN_PROGRESS">In corso</option>
+                              <option value="DONE">Completato</option>
+                            </select>
+                          ) : (
+                            <span
+                              className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${task.status === 'DONE' ? 'bg-green-50 text-green-600' : task.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}
+                              onClick={() => setEditingTaskStatusId(task.id)}
+                              title="Clicca per modificare lo stato"
+                            >
+                              {task.status === 'TODO' ? 'Da fare' : task.status === 'IN_PROGRESS' ? 'In corso' : 'Completato'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="w-16 sm:w-20 bg-gray-100 h-1.5 rounded-full overflow-hidden shadow-inner">
+                            <div className="bg-blue-500 h-full transition-all duration-700" style={{ width: `${task.progress}%` }}></div>
+                          </div>
+                          {editingTaskProgressId === task.id ? (
+                            <input
+                              type="number"
+                              autoFocus
+                              min="0"
+                              max="100"
+                              value={inlineTaskProgress}
+                              onChange={(e) => setInlineTaskProgress(e.target.value)}
+                              onBlur={() => handleInlineTaskUpdate(task.id, "progress", inlineTaskProgress)}
+                              onKeyDown={(e) => handleInlineProgressKeyDown(e, task.id)}
+                              className="w-10 border border-blue-500 rounded px-1 py-0.5 text-[10px] text-center font-bold text-blue-600 outline-none"
+                            />
+                          ) : (
+                            <span
+                              className="font-bold text-blue-600 cursor-pointer text-right"
+                              onClick={() => {
+                                setEditingTaskProgressId(task.id);
+                                setInlineTaskProgress(task.progress.toString());
+                              }}
+                              title="Clicca per modificare il progresso"
+                            >
+                              {task.progress}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:border-l border-gray-100 sm:pl-6">
-                  <button
-                    onClick={() => {
-                      resetItemForm();
-                      setActiveTaskId(task.id);
-                      setShowItemModal(true);
-                    }}
-                    className="flex-1 sm:flex-none text-blue-600 hover:text-white flex items-center justify-center gap-2 text-xs font-bold bg-blue-50 hover:bg-blue-600 px-4 py-2.5 rounded-xl transition-all"
-                  >
-                    <Plus size={16} /> <span>Aggiungi Riga</span>
-                  </button>
+
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => openEditTaskModal(task)}
-                    className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                     title="Modifica Task"
                   >
-                    <Edit2 size={18} />
+                    <Edit2 size={16} />
                   </button>
-                  <button onClick={() => handleDeleteTask(task.id)} className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Elimina Task">
-                    <Trash2 size={18} />
+                  <button
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    title="Elimina Task"
+                  >
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
 
-              <div className="px-6 py-4 bg-white/50 backdrop-blur-sm">
-                {task.items.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic py-4 text-center">Nessun dettaglio associato a questo task.</p>
-                ) : (
+              {/* Task Content - Expanded View */}
+              {isExpanded && (
+                <div className="border-t border-gray-100 bg-white">
+                  <div className="px-6 py-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+                      <div className="flex-1">
+                        {task.description && <p className="text-gray-600 text-sm leading-relaxed mb-4">{task.description}</p>}
+
+                        {task.users && task.users.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {task.users.map(u => (
+                                <span key={u.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700">
+                                  <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[8px] font-bold uppercase">{u.username.charAt(0)}</div>
+                                  {u.username}
+                                </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          resetItemForm();
+                          setActiveTaskId(task.id);
+                          setShowItemModal(true);
+                        }}
+                        className="w-full sm:w-auto shrink-0 text-blue-600 hover:text-white flex items-center justify-center gap-1.5 text-xs font-bold bg-blue-50 hover:bg-blue-600 px-3 py-2 rounded-lg transition-all"
+                      >
+                        <Plus size={14} /> <span>Aggiungi Riga</span>
+                      </button>
+                    </div>
+
+                    <div className="bg-gray-50/50 rounded-xl border border-gray-100 p-3 sm:p-4">
+                      {task.items.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic text-center py-2">Nessun dettaglio associato a questo task.</p>
+                      ) : (
                   <div className="grid gap-2">
                     {task.items.map((item) => (
                       <div key={item.id} className="group/item flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-xl bg-white border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all gap-4 sm:gap-0">
@@ -872,11 +955,38 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     ))}
                   </div>
                 )}
-              </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-8">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Precedente
+          </button>
+          <span className="text-sm text-gray-600 font-medium">
+            Pagina {currentPage} di {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Successiva
+          </button>
+        </div>
+      )}
 
       {/* Task Modal */}
       {showTaskModal && (
