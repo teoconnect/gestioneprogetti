@@ -151,12 +151,12 @@ export async function PUT(
       where: { id: resolvedParams.id },
       data: {
         ...taskData,
-        ...(userIds ? {
+        ...(userIds !== undefined ? {
           users: {
             set: userIds.map((id: string) => ({ id }))
           }
         } : {}),
-        ...(notifiedUserIds ? {
+        ...(notifiedUserIds !== undefined ? {
           notifiedUsers: {
             set: notifiedUserIds.map((id: string) => ({ id }))
           }
