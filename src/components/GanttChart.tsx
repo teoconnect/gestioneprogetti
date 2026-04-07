@@ -28,6 +28,7 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [ganttInst, setGanttInst] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<"Day" | "Week" | "Month">("Day");
   const isDraggingRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0 });
 
@@ -95,7 +96,7 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
 
 
     const newGantt = new Gantt(containerRef.current, formattedTasks, {
-      view_mode: "Day",
+      view_mode: viewMode,
       move_dependencies: false,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       on_date_change: (task: any, start: Date, end: Date) => {
@@ -193,9 +194,9 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
         ${colorStyles}
       `}</style>
       <div className="mb-4 flex gap-2">
-        <button className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded" onClick={() => ganttInst?.change_view_mode('Day')}>Giorno</button>
-        <button className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded" onClick={() => ganttInst?.change_view_mode('Week')}>Settimana</button>
-        <button className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded" onClick={() => ganttInst?.change_view_mode('Month')}>Mese</button>
+        <button className={`text-sm px-3 py-1 rounded transition-colors ${viewMode === 'Day' ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-gray-100 hover:bg-gray-200'}`} onClick={() => { setViewMode('Day'); ganttInst?.change_view_mode('Day'); }}>Giorno</button>
+        <button className={`text-sm px-3 py-1 rounded transition-colors ${viewMode === 'Week' ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-gray-100 hover:bg-gray-200'}`} onClick={() => { setViewMode('Week'); ganttInst?.change_view_mode('Week'); }}>Settimana</button>
+        <button className={`text-sm px-3 py-1 rounded transition-colors ${viewMode === 'Month' ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-gray-100 hover:bg-gray-200'}`} onClick={() => { setViewMode('Month'); ganttInst?.change_view_mode('Month'); }}>Mese</button>
       </div>
       <div ref={containerRef} className="w-full"></div>
     </div>
