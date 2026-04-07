@@ -35,6 +35,18 @@ export async function GET() {
             name: true,
             code: true,
           }
+        },
+        users: {
+          select: {
+            id: true,
+            username: true,
+          }
+        },
+        notifiedUsers: {
+          select: {
+            id: true,
+            username: true,
+          }
         }
       },
       orderBy: { startDate: "asc" },
