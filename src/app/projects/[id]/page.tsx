@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings, ChevronUp, ChevronDown, ChevronRight, Search, Filter } from "lucide-react";
+import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings, ChevronUp, ChevronDown, ChevronRight, Search, Filter, Copy } from "lucide-react";
 import GanttChartWrapper from "@/components/GanttChartWrapper";
 import { calculateProgress } from "@/lib/utils";
 
@@ -112,6 +112,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   // Bulk offset state
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [showOffsetModal, setShowOffsetModal] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [offsetDays, setOffsetDays] = useState(1);
   const [offsetDirection, setOffsetDirection] = useState<"forward" | "backward">("forward");
 
@@ -185,6 +186,33 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }
     fetchMe();
   }, []);
+
+  const handleDuplicateProject = async () => {
+    if (!project) return;
+    const newName = window.prompt("Inserisci il nome del nuovo progetto duplicato:", `${project.name} - Copia`);
+    if (!newName) return; // User cancelled
+
+    setIsDuplicating(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newName }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        window.location.href = `/projects/${data.newProjectId}`;
+      } else {
+        alert("Errore durante la duplicazione: " + data.error);
+        setIsDuplicating(false);
+      }
+    } catch (error) {
+      console.error("Error duplicating project", error);
+      alert("Errore imprevisto durante la duplicazione.");
+      setIsDuplicating(false);
+    }
+  };
 
   const handleProjectUpdate = async (field: "name" | "description" | "status", value: string) => {
     if (!project) return;
@@ -619,6 +647,16 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-lg tracking-widest uppercase">
                 {project.code}
               </span>
+
+              <button
+                onClick={handleDuplicateProject}
+                disabled={isDuplicating}
+                className="px-3 py-1 text-xs font-bold uppercase rounded-lg flex items-center gap-1.5 transition-all bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:ring-4 hover:ring-indigo-100"
+                title="Duplica intero progetto"
+              >
+                <Copy size={14} />
+                {isDuplicating ? "Duplicazione..." : "Duplica"}
+              </button>
               {editingField === "status" ? (
                 <select
                   autoFocus
