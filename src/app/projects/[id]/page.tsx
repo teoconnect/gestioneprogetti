@@ -109,8 +109,20 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [currentPage, setCurrentPage] = useState(1);
   const tasksPerPage = 10;
 
+  // Bulk offset state
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [showOffsetModal, setShowOffsetModal] = useState(false);
+  const [offsetDays, setOffsetDays] = useState(1);
+  const [offsetDirection, setOffsetDirection] = useState<"forward" | "backward">("forward");
+
   const toggleTaskExpansion = (taskId: string) => {
     setExpandedTasks(prev =>
+      prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+    );
+  };
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTaskIds(prev =>
       prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
     );
   };
@@ -502,6 +514,32 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }, 500);
   };
 
+  const handleBulkOffset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const signedDays = offsetDirection === "forward" ? offsetDays : -offsetDays;
+      const res = await fetch(`/api/tasks/bulk-offset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskIds: selectedTaskIds,
+          daysOffset: signedDays,
+        }),
+      });
+
+      if (res.ok) {
+        setShowOffsetModal(false);
+        setSelectedTaskIds([]);
+        fetchProject();
+      } else {
+        console.error("Failed to update tasks");
+        alert("Errore durante lo spostamento dei task.");
+      }
+    } catch (error) {
+      console.error("Error updating tasks", error);
+    }
+  };
+
   const handleGanttProgressUpdate = async (task: Task, progress: number) => {
     if (updateTimeoutRef.current) {
       clearTimeout(updateTimeoutRef.current);
@@ -547,6 +585,24 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     (currentPage - 1) * tasksPerPage,
     currentPage * tasksPerPage
   );
+
+  const handleSelectAllFiltered = () => {
+    const allFilteredIds = filteredTasks.map(t => t.id);
+    const allSelected = allFilteredIds.every(id => selectedTaskIds.includes(id));
+
+    if (allSelected) {
+      // Deselect all filtered tasks
+      setSelectedTaskIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+    } else {
+      // Select all filtered tasks (keep existing selections)
+      setSelectedTaskIds(prev => {
+        const newSet = new Set([...prev, ...allFilteredIds]);
+        return Array.from(newSet);
+      });
+    }
+  };
+
+  const allFilteredSelected = filteredTasks.length > 0 && filteredTasks.every(t => selectedTaskIds.includes(t.id));
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
@@ -746,6 +802,45 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
+      {selectedTaskIds.length > 0 && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="bg-blue-600 text-white font-bold text-xs px-2.5 py-1 rounded-md">
+              {selectedTaskIds.length}
+            </span>
+            <span className="text-sm font-semibold text-blue-800">Task selezionati</span>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => setSelectedTaskIds([])}
+              className="flex-1 sm:flex-none text-blue-600 bg-white border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+            >
+              Deseleziona tutti
+            </button>
+            <button
+              onClick={() => setShowOffsetModal(true)}
+              className="flex-1 sm:flex-none bg-blue-600 text-white hover:bg-blue-700 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
+            >
+              Sposta Date
+            </button>
+          </div>
+        </div>
+      )}
+
+      {filteredTasks.length > 0 && (
+        <div className="mb-3 px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allFilteredSelected}
+              onChange={handleSelectAllFiltered}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm font-bold text-gray-700">Seleziona tutti i task filtrati ({filteredTasks.length})</span>
+          </label>
+        </div>
+      )}
+
       <div className="space-y-3">
         {paginatedTasks.length === 0 ? (
           <div className="text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -762,6 +857,14 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 onClick={() => toggleTaskExpansion(task.id)}
               >
                 <div className="flex-1 w-full flex items-center gap-3">
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedTaskIds.includes(task.id)}
+                      onChange={() => toggleTaskSelection(task.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </div>
                   <div className={`transition-transform duration-200 text-gray-400 ${isExpanded ? 'rotate-90' : ''}`}>
                     <ChevronRight size={20} />
                   </div>
@@ -1146,6 +1249,58 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
                 <button type="button" onClick={() => { setShowTaskModal(false); resetTaskForm(); }} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
                 <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition">Salva Task</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Offset Modal */}
+      {showOffsetModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 text-gray-800">Sposta Date</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Stai per spostare temporalmente le date di inizio e fine per <span className="font-bold text-blue-600">{selectedTaskIds.length} task</span>.
+            </p>
+            <form onSubmit={handleBulkOffset} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Direzione</label>
+                <select
+                  value={offsetDirection}
+                  onChange={(e) => setOffsetDirection(e.target.value as "forward" | "backward")}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+                >
+                  <option value="forward">In Avanti (Posticipa)</option>
+                  <option value="backward">All&apos;Indietro (Anticipa)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Giorni (di calendario)</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={offsetDays}
+                  onChange={(e) => setOffsetDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowOffsetModal(false)}
+                  className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition"
+                >
+                  Applica Spostamento
+                </button>
               </div>
             </form>
           </div>
