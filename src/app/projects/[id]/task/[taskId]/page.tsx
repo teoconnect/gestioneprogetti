@@ -37,6 +37,11 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
   const [editingInlineItemId, setEditingInlineItemId] = useState<string | null>(null);
   const [inlineItemValue, setInlineItemValue] = useState("");
 
+  // Inline Task Status/Progress state
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [isEditingProgress, setIsEditingProgress] = useState(false);
+  const [inlineProgressValue, setInlineProgressValue] = useState("");
+
   const fetchTask = async () => {
     try {
       const res = await fetch(`/api/tasks/${resolvedParams.taskId}`);
@@ -83,6 +88,66 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
     }
   };
 
+  const handleInlineTaskUpdate = async (field: "status" | "progress", value: string | number) => {
+    if (!task) return;
+    try {
+      let finalStatus = task.status;
+      let finalProgress = task.progress;
+
+      if (field === "status") {
+        finalStatus = value as string;
+        if (finalStatus === "DONE") {
+          finalProgress = 100;
+        } else if (finalStatus === "TODO") {
+          finalProgress = 0;
+        } else if (finalStatus === "IN_PROGRESS" && task.progress === 100) {
+           finalProgress = 50;
+        }
+      } else if (field === "progress") {
+        finalProgress = Number(value);
+        if (finalProgress === 100) {
+          finalStatus = "DONE";
+        } else if (finalProgress === 0) {
+          finalStatus = "TODO";
+        } else if (finalProgress > 0 && finalProgress < 100) {
+          finalStatus = "IN_PROGRESS";
+        }
+      }
+
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: finalStatus,
+          progress: finalProgress
+        }),
+      });
+
+      if (res.ok) {
+        fetchTask();
+        if (field === "status") setIsEditingStatus(false);
+        if (field === "progress") setIsEditingProgress(false);
+
+        // Se siamo in un iframe, è possibile che vogliamo informare il parent per aggiornare il Gantt.
+        // Un modo generico è fare ricaricare o inviare un messaggio postMessage (opzionale).
+        // if (isModal && window.parent) {
+        //     window.parent.postMessage('TASK_UPDATED', '*');
+        // }
+      }
+    } catch (error) {
+      console.error("Error updating task inline", error);
+    }
+  };
+
+  const handleInlineProgressKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleInlineTaskUpdate("progress", inlineProgressValue);
+    } else if (e.key === "Escape") {
+      setIsEditingProgress(false);
+    }
+  };
+
+
   if (loading) return <div className="text-center py-10">Caricamento in corso...</div>;
   if (!task) return <div className="text-center py-10">Task non trovato</div>;
 
@@ -102,14 +167,64 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
             <div className="flex gap-4 text-sm text-gray-600 flex-wrap">
               <span className="flex items-center gap-1"><Calendar size={16} /> Dal: {new Date(task.startDate).toLocaleDateString()}</span>
               <span className="flex items-center gap-1"><Calendar size={16} /> Al: {new Date(task.endDate).toLocaleDateString()}</span>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                task.status === 'DONE' ? 'bg-green-100 text-green-800' :
-                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {task.status}
-              </span>
-              <span className="flex items-center gap-1"><CheckCircle size={16} /> Progresso: {task.progress}%</span>
+
+              <div className="flex items-center gap-2 ml-2">
+                 {isEditingStatus ? (
+                    <select
+                      autoFocus
+                      value={task.status}
+                      onChange={(e) => handleInlineTaskUpdate("status", e.target.value)}
+                      onBlur={() => setIsEditingStatus(false)}
+                      className="border border-blue-500 rounded-lg px-2 py-0.5 text-xs bg-white text-blue-600 outline-none"
+                    >
+                      <option value="TODO">Da fare</option>
+                      <option value="IN_PROGRESS">In corso</option>
+                      <option value="DONE">Completato</option>
+                    </select>
+                 ) : (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all ${
+                        task.status === 'DONE' ? 'bg-green-100 text-green-800' :
+                        task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}
+                      onClick={() => setIsEditingStatus(true)}
+                      title="Clicca per modificare lo stato"
+                    >
+                      {task.status === 'TODO' ? 'Da fare' : task.status === 'IN_PROGRESS' ? 'In corso' : 'Completato'}
+                    </span>
+                 )}
+              </div>
+
+              <div className="flex items-center gap-1 ml-2">
+                 <CheckCircle size={16} />
+                 <span>Progresso:</span>
+                 {isEditingProgress ? (
+                    <input
+                      type="number"
+                      autoFocus
+                      min="0"
+                      max="100"
+                      value={inlineProgressValue}
+                      onChange={(e) => setInlineProgressValue(e.target.value)}
+                      onBlur={() => handleInlineTaskUpdate("progress", inlineProgressValue)}
+                      onKeyDown={handleInlineProgressKeyDown}
+                      className="w-14 border border-blue-500 rounded-lg px-1 py-0.5 text-xs text-center font-bold text-blue-600 outline-none"
+                    />
+                 ) : (
+                    <span
+                      className="font-bold text-blue-600 cursor-pointer min-w-[3ch] hover:underline"
+                      onClick={() => {
+                        setIsEditingProgress(true);
+                        setInlineProgressValue(task.progress.toString());
+                      }}
+                      title="Clicca per modificare il progresso"
+                    >
+                      {task.progress}%
+                    </span>
+                 )}
+              </div>
+
             </div>
           </div>
           {task.color && (
