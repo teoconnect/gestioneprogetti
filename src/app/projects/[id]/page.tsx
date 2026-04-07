@@ -283,7 +283,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     if (!start || !end) return "";
     const startDate = new Date(start);
     const endDate = new Date(end);
-    const diffTime = endDate.getTime() - startDate.getTime();
+    const startUTC = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const endUTC = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    const diffTime = endUTC - startUTC;
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     return diffDays.toString();
   };
@@ -293,8 +295,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     const startDate = new Date(start);
     const days = parseInt(duration, 10);
     if (isNaN(days)) return "";
-    startDate.setDate(startDate.getDate() + days);
-    return startDate.toISOString().split('T')[0];
+    const endDate = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + days));
+    return endDate.toISOString().split('T')[0];
   };
 
   const handleTaskStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1178,7 +1180,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       {/* Task Modal */}
       {showTaskModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
+          <div className="bg-white p-6 rounded-xl w-full max-w-2xl shadow-2xl overflow-y-auto max-h-[90vh]">
             <h2 className="text-2xl font-bold mb-6 text-gray-800">{isEditingTask ? "Modifica Task" : "Nuovo Task"}</h2>
             <form onSubmit={handleCreateOrUpdateTask} className="space-y-4">
               <div>
