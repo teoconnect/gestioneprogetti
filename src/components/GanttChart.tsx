@@ -101,11 +101,18 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
       on_date_change: (task: any, start: Date, end: Date) => {
         const originalTask = tasks.find((t) => t.id === task.id);
         if (originalTask) {
+          // Format using local date to prevent UTC offsets shifting it to the previous day
+          const formatLocal = (d: Date) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
 
-                    onTaskUpdate(
+          onTaskUpdate(
             originalTask,
-            start.toISOString(),
-            end.toISOString()
+            formatLocal(start),
+            formatLocal(end)
           );
         }
       },
