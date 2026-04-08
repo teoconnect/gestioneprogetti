@@ -20,11 +20,11 @@ export const verifyAuth = async (token: string) => {
   }
 };
 
-export const createToken = async (id: string, username: string, role: string) => {
+export const createToken = async (id: string, username: string, role: string, expiresIn: string | number | Date = "30d") => {
   const token = await new SignJWT({ id, username, role })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("24h")
+    .setExpirationTime(expiresIn)
     .sign(new TextEncoder().encode(getJwtSecretKey()));
   return token;
 };

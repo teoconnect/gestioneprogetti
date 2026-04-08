@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       httpOnly: true,
       path: "/",
       secure: false, // Forzato a false per permettere i test su rete locale HTTP
-      maxAge: 60 * 60 * 24, // 1 day
+      maxAge: 60 * 60 * 24 * 30, // 30 days
     });
 
     return response;
