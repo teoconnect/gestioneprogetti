@@ -7,7 +7,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // A simple pass-through to satisfy the PWA requirements.
-  // In a full offline PWA, you would handle caching here.
-  event.respondWith(fetch(event.request));
+  // Simple pass-through that falls back to network to ensure a valid response
+  // and satisfies the browser's PWA heuristics (needs a fetch handler).
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return new Response("Offline content not available.", {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: new Headers({
+          "Content-Type": "text/plain"
+        })
+      });
+    })
+  );
 });
