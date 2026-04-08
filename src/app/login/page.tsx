@@ -44,7 +44,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-center text-gray-800">
             Benvenuto
           </h1>
-          <p className="text-gray-500 mt-2">Area Sviluppo Gestionali</p>
+          <p className="text-gray-500 mt-2">Area Sviluppo Progetti</p>
         </div>
 
         {error && (
