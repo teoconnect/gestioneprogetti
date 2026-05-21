@@ -107,6 +107,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const [expandedTasks, setExpandedTasks] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [sortOrder, setSortOrder] = useState("START_ASC");
   const [currentPage, setCurrentPage] = useState(1);
   const tasksPerPage = 10;
 
@@ -131,7 +132,23 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, sortOrder]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'OPEN_EDIT_TASK_MODAL' && event.data?.taskId) {
+        if (project) {
+          const taskToEdit = project.tasks.find(t => t.id === event.data.taskId);
+          if (taskToEdit) {
+            setSelectedGanttTaskId(null); // Chiudiamo la modale iframe di dettaglio
+            openEditTaskModal(taskToEdit); // Apriamo la modale di modifica
+          }
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [project]);
 
   // Gantt drag state refs
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -654,7 +671,24 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       const matchesStatus = statusFilter === "ALL" || t.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
-    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    .sort((a, b) => {
+      const startA = new Date(a.startDate).getTime();
+      const startB = new Date(b.startDate).getTime();
+      const endA = new Date(a.endDate).getTime();
+      const endB = new Date(b.endDate).getTime();
+
+      switch (sortOrder) {
+        case "START_DESC":
+          return startB - startA;
+        case "END_ASC":
+          return endA - endB;
+        case "END_DESC":
+          return endB - endA;
+        case "START_ASC":
+        default:
+          return startA - startB;
+      }
+    });
 
   const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
   const paginatedTasks = filteredTasks.slice(
@@ -866,6 +900,21 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 <option value="IN_PROGRESS">In corso</option>
                 <option value="DONE">Completato</option>
               </select>
+            </div>
+            <div className="relative flex-1 sm:w-48">
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="START_ASC">Data inizio (Crescente)</option>
+                <option value="START_DESC">Data inizio (Decrescente)</option>
+                <option value="END_ASC">Data fine (Crescente)</option>
+                <option value="END_DESC">Data fine (Decrescente)</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                <ChevronDown size={16} />
+              </div>
             </div>
           </div>
           <button

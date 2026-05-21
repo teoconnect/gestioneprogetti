@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Calendar, FileText, Hash, Paperclip, CheckCircle } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Hash, Paperclip, CheckCircle, Edit2 } from "lucide-react";
 
 type TaskItem = {
   id: string;
@@ -148,17 +148,37 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
   };
 
 
+  const handleEditClick = () => {
+    if (isModal && window.parent) {
+      window.parent.postMessage({ type: 'OPEN_EDIT_TASK_MODAL', taskId: task?.id }, '*');
+    } else {
+      // Come fallback fuori dal modale reindirizziamo al progetto (dal momento che la modale è li)
+      window.location.href = `/projects/${resolvedParams.id}`;
+    }
+  };
+
   if (loading) return <div className="text-center py-10">Caricamento in corso...</div>;
   if (!task) return <div className="text-center py-10">Task non trovato</div>;
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      {!isModal && (
-        <Link href={`/projects/${resolvedParams.id}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 transition">
-          <ArrowLeft size={16} className="mr-2" />
-          Torna al Progetto
-        </Link>
-      )}
+      <div className="flex justify-between items-center mb-6">
+        {!isModal ? (
+          <Link href={`/projects/${resolvedParams.id}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 transition">
+            <ArrowLeft size={16} className="mr-2" />
+            Torna al Progetto
+          </Link>
+        ) : (
+          <div></div> // Spacer per mantenere l'allineamento
+        )}
+        <button
+          onClick={handleEditClick}
+          className="bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800 px-4 py-2 rounded-lg flex items-center gap-2 font-semibold transition-all border border-blue-200"
+          title="Modifica task"
+        >
+          <Edit2 size={16} /> Modifica Task
+        </button>
+      </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-8 border border-gray-100">
         <div className="flex justify-between items-start mb-4">
