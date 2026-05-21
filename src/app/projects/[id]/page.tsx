@@ -633,6 +633,30 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     }
   };
 
+
+  const handleBulkDuplicate = async () => {
+    if (!confirm("Sei sicuro di voler duplicare i task selezionati?")) return;
+    setIsDuplicating(true);
+    try {
+      const res = await fetch(`/api/tasks/bulk-duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: selectedTaskIds }),
+      });
+
+      if (res.ok) {
+        setSelectedTaskIds([]);
+        fetchProject();
+      } else {
+        console.error("Failed to duplicate tasks");
+        alert("Errore durante la duplicazione dei task.");
+      }
+    } catch (error) {
+      console.error("Error duplicating tasks", error);
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
   const handleGanttProgressUpdate = async (task: Task, progress: number) => {
     if (updateTimeoutRef.current) {
       clearTimeout(updateTimeoutRef.current);
@@ -952,12 +976,21 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
             >
               Deseleziona tutti
             </button>
+
+            <button
+              onClick={handleBulkDuplicate}
+              disabled={isDuplicating}
+              className="flex-1 sm:flex-none bg-blue-600 text-white hover:bg-blue-700 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors disabled:opacity-50"
+            >
+              {isDuplicating ? "Duplicazione..." : "Duplica Task"}
+            </button>
             <button
               onClick={() => setShowOffsetModal(true)}
               className="flex-1 sm:flex-none bg-blue-600 text-white hover:bg-blue-700 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
             >
               Sposta Date
             </button>
+
           </div>
         </div>
       )}
