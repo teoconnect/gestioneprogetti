@@ -539,6 +539,10 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   const handleInlineItemKeyDown = (e: React.KeyboardEvent, item: TaskItem) => {
     if (e.key === "Enter") {
+      if (item.type === "text") {
+        // Nella textarea, "Enter" va a capo. Non salviamo qui, lo facciamo all'onBlur.
+        return;
+      }
       handleInlineItemUpdate(item, inlineItemValue);
     } else if (e.key === "Escape") {
       setEditingInlineItemId(null);
@@ -1189,18 +1193,29 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                                   <span className="text-gray-300 italic font-normal">Nessun file</span>
                                 )
                               ) : editingInlineItemId === item.id ? (
-                                <input
-                                  type={item.type === "number" ? "number" : item.type === "date" ? "date" : "text"}
-                                  autoFocus
-                                  value={inlineItemValue}
-                                  onChange={(e) => setInlineItemValue(e.target.value)}
-                                  onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
-                                  onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
-                                  className="w-full border-2 border-blue-500 rounded-lg px-2 py-1 bg-white text-gray-900 outline-none text-sm"
-                                />
+                                item.type === "text" ? (
+                                  <textarea
+                                    autoFocus
+                                    value={inlineItemValue}
+                                    onChange={(e) => setInlineItemValue(e.target.value)}
+                                    onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
+                                    onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
+                                    className="w-full border-2 border-blue-500 rounded-lg px-2 py-1 bg-white text-gray-900 outline-none text-sm min-h-[80px]"
+                                  />
+                                ) : (
+                                  <input
+                                    type={item.type === "number" ? "number" : "date"}
+                                    autoFocus
+                                    value={inlineItemValue}
+                                    onChange={(e) => setInlineItemValue(e.target.value)}
+                                    onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
+                                    onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
+                                    className="w-full border-2 border-blue-500 rounded-lg px-2 py-1 bg-white text-gray-900 outline-none text-sm"
+                                  />
+                                )
                               ) : (
                                 <span
-                                  className="cursor-pointer hover:text-blue-800 transition-colors flex items-center gap-2"
+                                  className="cursor-pointer hover:text-blue-800 transition-colors flex items-center gap-2 whitespace-pre-wrap"
                                   onClick={() => {
                                     setEditingInlineItemId(item.id);
                                     setInlineItemValue(item.value || "");
@@ -1208,7 +1223,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                                   title="Clicca per modificare"
                                 >
                                   {item.value || <span className="text-gray-300 italic font-normal">Aggiungi valore...</span>}
-                                  <Edit2 size={12} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                                  <Edit2 size={12} className="opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0" />
                                 </span>
                               )}
                             </div>
@@ -1582,10 +1597,15 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   )}
                   <input type="file" onChange={e => setItemFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition" />
                 </div>
+              ) : itemType === "text" ? (
+                <div key="value-input-text">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Valore (opzionale)</label>
+                  <textarea value={itemValue} onChange={e => setItemValue(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" rows={3}></textarea>
+                </div>
               ) : (
                 <div key="value-input">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Valore (opzionale)</label>
-                  <input type={itemType === "number" ? "number" : itemType === "date" ? "date" : "text"} value={itemValue} onChange={e => setItemValue(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                  <input type={itemType === "number" ? "number" : "date"} value={itemValue} onChange={e => setItemValue(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
                 </div>
               )}
 
