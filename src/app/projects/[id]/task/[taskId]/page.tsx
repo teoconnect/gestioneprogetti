@@ -82,6 +82,9 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
 
   const handleInlineItemKeyDown = (e: React.KeyboardEvent, item: TaskItem) => {
     if (e.key === "Enter") {
+      if (item.type === "text") {
+        return;
+      }
       handleInlineItemUpdate(item, inlineItemValue);
     } else if (e.key === "Escape") {
       setEditingInlineItemId(null);
@@ -300,18 +303,29 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
                           <span></span>
                         )
                       ) : editingInlineItemId === item.id ? (
-                        <input
-                          type={item.type === "number" ? "number" : item.type === "date" ? "date" : "text"}
-                          autoFocus
-                          value={inlineItemValue}
-                          onChange={(e) => setInlineItemValue(e.target.value)}
-                          onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
-                          onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
-                          className="w-full border-b border-blue-500 outline-none bg-white text-gray-900 px-1 py-0.5 rounded shadow-sm text-sm"
-                        />
+                        item.type === "text" ? (
+                          <textarea
+                            autoFocus
+                            value={inlineItemValue}
+                            onChange={(e) => setInlineItemValue(e.target.value)}
+                            onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
+                            onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
+                            className="w-full border-b border-blue-500 outline-none bg-white text-gray-900 px-1 py-0.5 rounded shadow-sm text-sm min-h-[80px]"
+                          />
+                        ) : (
+                          <input
+                            type={item.type === "number" ? "number" : "date"}
+                            autoFocus
+                            value={inlineItemValue}
+                            onChange={(e) => setInlineItemValue(e.target.value)}
+                            onBlur={() => handleInlineItemUpdate(item, inlineItemValue)}
+                            onKeyDown={(e) => handleInlineItemKeyDown(e, item)}
+                            className="w-full border-b border-blue-500 outline-none bg-white text-gray-900 px-1 py-0.5 rounded shadow-sm text-sm"
+                          />
+                        )
                       ) : (
                         <span
-                          className="bg-white px-3 py-1.5 rounded-md border border-gray-200 block cursor-pointer hover:border-blue-300 transition-colors"
+                          className="bg-white px-3 py-1.5 rounded-md border border-gray-200 block cursor-pointer hover:border-blue-300 transition-colors whitespace-pre-wrap"
                           onClick={() => {
                             setEditingInlineItemId(item.id);
                             setInlineItemValue(item.value || "");
