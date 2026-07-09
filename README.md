@@ -15,6 +15,9 @@ Un'applicazione web sviluppata con **Next.js**, **Prisma** e database (**SQLite*
   - Collegamento di sotto-elementi (righe) ai task (testo, numeri, allegati fisici, date).
   - Sincronizzazione automatica tra stato (es. Completato) e progresso (100%).
   - Spostamento di massa (Bulk Offset) delle date dei task.
+  - **Gestione di Baseline Multiple**: Salvataggio di "fotografie" dello stato temporale (date di inizio/fine). Interfaccia che evidenzia dinamicamente e visivamente (con testo barrato e differenze in giorni) gli scostamenti tra la programmazione attuale e le baseline salvate.
+- **Importazione ed Esportazione Excel**: Strumenti integrati per esportare l'elenco dei progetti e dei task in `.xlsx` o effettuare importazioni di massa (inserendo ogni riga come un nuovo record o ignorando i match non trovati silenziosamente).
+- **Supporto PWA (Progressive Web App)**: Configurazione che permette all'app di essere "installata" nativamente su desktop o schermi mobile, completa di manifest e Service Worker dedicato.
 - **Notifiche Email Automatiche**: Pattern "Watchers" per ricevere email alla creazione, modifica e notifica giornaliera automatica (tramite cron) per i task in scadenza.
 - **Diagramma di Gantt Interattivo**: Visualizzazione temporale tramite `frappe-gantt`, con drag & drop disabilitato per dipendenze automatiche, viste dinamiche (giorno, settimana, mese).
 - **UI Moderna e Responsiva "Premium"**:
@@ -129,3 +132,11 @@ L'applicazione è pensata per essere facile e immediata da usare:
 
 4. **Dettagli aggiuntivi per i Task**:
    - Per ogni task, è possibile aggiungere sotto-elementi (righe o campi personalizzati come testo o allegati) cliccando sul pulsante **+ Aggiungi Riga** e compilando i campi necessari.
+
+5. **Utilizzo delle Baseline**:
+   - Accedi ai dettagli di un progetto e usa il pulsante **Salva Baseline** per memorizzare lo stato attuale del Gantt.
+   - Modificando successivamente le date dei task, il sistema mostrerà automaticamente le differenze (in giorni) rispetto alla baseline selezionata per un raffronto immediato dello slittamento dei tempi.
+
+6. **Importazione ed Esportazione Excel**:
+   - Dalle viste dei progetti, puoi utilizzare gli appositi pulsanti in cima alla pagina per scaricare il tuo lavoro attuale (Export) in formato Excel.
+   - Tramite la funzione di Importazione, puoi anche caricare massivamente task tramite un foglio `.xlsx`, accelerando la creazione dei piani operativi.
