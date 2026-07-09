@@ -1087,14 +1087,14 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         )}
       </div>
 
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
+      <div className="mb-6 flex flex-col gap-4">
+        <div className="w-full">
            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Timeline & Task</h2>
            <p className="text-gray-400 text-sm font-medium">Organizza le attività e monitora le scadenze</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <div className="flex gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-48">
+        <div className="flex flex-col sm:flex-row gap-3 w-full justify-between items-start sm:items-center">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 min-w-[150px] sm:w-48">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
@@ -1133,44 +1133,46 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               </div>
             </div>
           </div>
-          <button
-            onClick={() => {
-              setProjectSelectedUsers(project?.users ? project.users.map(u => u.id) : []);
-              setShowSettingsModal(true);
-            }}
-            className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all border border-gray-200 font-bold text-sm shadow-sm"
-          >
-            <Settings size={18} />
-            Team Progetto
-          </button>
-          <div className="flex gap-2 items-center mr-2">
-            <select
-              value={selectedBaselineId}
-              onChange={(e) => setSelectedBaselineId(e.target.value)}
-              className="px-3 py-2.5 border rounded-xl text-sm font-semibold text-gray-700 bg-white shadow-sm outline-none"
-            >
-              <option value="">Baseline: Nessuna</option>
-              {baselines.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} ({new Date(b.createdAt).toLocaleDateString()})
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-wrap gap-3 w-full sm:w-auto justify-end">
             <button
-              onClick={() => setIsBaselineModalOpen(true)}
-              className="bg-white hover:bg-gray-50 text-gray-800 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border shadow-sm whitespace-nowrap"
-              title="Salva lo stato attuale delle date come Baseline"
+              onClick={() => {
+                setProjectSelectedUsers(project?.users ? project.users.map(u => u.id) : []);
+                setShowSettingsModal(true);
+              }}
+              className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all border border-gray-200 font-bold text-sm shadow-sm"
             >
-              Salva Baseline
+              <Settings size={18} />
+              Team Progetto
+            </button>
+            <div className="flex gap-2 items-center w-full sm:w-auto">
+              <select
+                value={selectedBaselineId}
+                onChange={(e) => setSelectedBaselineId(e.target.value)}
+                className="px-3 py-2.5 border rounded-xl text-sm font-semibold text-gray-700 bg-white shadow-sm outline-none flex-1"
+              >
+                <option value="">Baseline: Nessuna</option>
+                {baselines.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({new Date(b.createdAt).toLocaleDateString()})
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setIsBaselineModalOpen(true)}
+                className="bg-white hover:bg-gray-50 text-gray-800 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border shadow-sm whitespace-nowrap"
+                title="Salva lo stato attuale delle date come Baseline"
+              >
+                Salva Baseline
+              </button>
+            </div>
+            <button
+              onClick={openNewTaskModal}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm shadow-lg shadow-blue-500/20"
+            >
+              <Plus size={18} />
+              Nuovo Task
             </button>
           </div>
-          <button
-            onClick={openNewTaskModal}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm shadow-lg shadow-blue-500/20"
-          >
-            <Plus size={18} />
-            Nuovo Task
-          </button>
         </div>
       </div>
 
