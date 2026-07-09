@@ -34,6 +34,7 @@ export async function GET() {
           select: {
             name: true,
             code: true,
+            status: true,
           }
         },
         users: {
