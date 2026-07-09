@@ -30,6 +30,7 @@ model Project {
   updatedAt   DateTime @updatedAt
   tasks       Task[]
   users       User[]   // Implicit many-to-many
+  baselines   ProjectBaseline[]
 }
 
 model Task {
@@ -49,6 +50,7 @@ model Task {
   items        TaskItem[]
   users        User[]     @relation("TaskAssignees") // Assignees
   notifiedUsers User[]    @relation("TaskNotifiedUsers") // Watchers
+  baselines         TaskBaseline[]
 }
 
 model TaskItem {
@@ -61,4 +63,23 @@ model TaskItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model ProjectBaseline {
+  id        String         @id @default(uuid())
+  projectId String
+  name      String
+  createdAt DateTime       @default(now())
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     TaskBaseline[]
+}
+
+model TaskBaseline {
+  id                String          @id @default(uuid())
+  projectBaselineId String
+  taskId            String
+  startDate         DateTime
+  endDate           DateTime
+  projectBaseline   ProjectBaseline @relation(fields: [projectBaselineId], references: [id], onDelete: Cascade)
+  task              Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
