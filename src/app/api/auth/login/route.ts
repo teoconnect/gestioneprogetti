@@ -13,8 +13,13 @@ export async function POST(request: Request) {
 
     for (let i = 0; i < usersList.length; i++) {
       const [confUser, confPass] = usersList[i].split(":");
-      const existingUser = await prisma.user.findUnique({
-        where: { username: confUser },
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: confUser },
+            { email: i === 0 ? "admin@example.com" : `user${i}@example.com` }
+          ]
+        },
       });
 
       if (!existingUser) {
