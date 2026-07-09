@@ -14,6 +14,23 @@ type TaskItem = {
   value: string | null;
 };
 
+
+interface ProjectBaseline {
+  id: string;
+  projectId: string;
+  name: string;
+  createdAt: string;
+  tasks: TaskBaseline[];
+}
+
+interface TaskBaseline {
+  id: string;
+  projectBaselineId: string;
+  taskId: string;
+  startDate: string;
+  endDate: string;
+}
+
 type User = {
   id: string;
   username: string;
@@ -48,6 +65,13 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   const resolvedParams = use(params);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [baselines, setBaselines] = useState<ProjectBaseline[]>([]);
+  const [selectedBaselineId, setSelectedBaselineId] = useState<string>('');
+  const [isBaselineModalOpen, setIsBaselineModalOpen] = useState(false);
+  const [newBaselineName, setNewBaselineName] = useState('');
+  const [savingBaseline, setSavingBaseline] = useState(false);
+
 
   // Inline edit state
   const [editingField, setEditingField] = useState<"name" | "description" | "status" | null>(null);
@@ -152,6 +176,63 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   // Gantt drag state refs
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+
+  const fetchBaselines = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${resolvedParams.id}/baselines`);
+      if (res.ok) {
+        const data = await res.json();
+        setBaselines(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch baselines:', error);
+    }
+  }, [resolvedParams.id]);
+
+  const handleSaveBaseline = async () => {
+    if (!newBaselineName.trim()) return;
+    setSavingBaseline(true);
+    try {
+      const res = await fetch(`/api/projects/${resolvedParams.id}/baselines`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newBaselineName }),
+      });
+      if (res.ok) {
+        const newBaseline = await res.json();
+        setBaselines([newBaseline, ...baselines]);
+        setSelectedBaselineId(newBaseline.id);
+        setIsBaselineModalOpen(false);
+        setNewBaselineName('');
+      } else {
+        alert('Errore nel salvataggio della baseline');
+      }
+    } catch (error) {
+      console.error('Failed to save baseline:', error);
+      alert('Errore nel salvataggio della baseline');
+    } finally {
+      setSavingBaseline(false);
+    }
+  };
+
+  const selectedBaseline = baselines.find((b) => b.id === selectedBaselineId);
+
+  const getTaskBaseline = (taskId: string) => {
+    if (!selectedBaseline) return null;
+    return selectedBaseline.tasks.find((t) => t.taskId === taskId);
+  };
+
+  const getDaysDifference = (currentDateString: string | Date, baselineDateString: string | Date) => {
+    const current = new Date(currentDateString);
+    const baseline = new Date(baselineDateString);
+    current.setUTCHours(0,0,0,0);
+    baseline.setUTCHours(0,0,0,0);
+    const diffTime = current.getTime() - baseline.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+  };
 
   const fetchProject = useCallback(async () => {
     try {
@@ -955,6 +1036,27 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
             <Settings size={18} />
             Team Progetto
           </button>
+          <div className="flex gap-2 items-center mr-2">
+            <select
+              value={selectedBaselineId}
+              onChange={(e) => setSelectedBaselineId(e.target.value)}
+              className="px-3 py-2.5 border rounded-xl text-sm font-semibold text-gray-700 bg-white shadow-sm outline-none"
+            >
+              <option value="">Baseline: Nessuna</option>
+              {baselines.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} ({new Date(b.createdAt).toLocaleDateString()})
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => setIsBaselineModalOpen(true)}
+              className="bg-white hover:bg-gray-50 text-gray-800 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border shadow-sm whitespace-nowrap"
+              title="Salva lo stato attuale delle date come Baseline"
+            >
+              Salva Baseline
+            </button>
+          </div>
           <button
             onClick={openNewTaskModal}
             className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm shadow-lg shadow-blue-500/20"
@@ -1617,6 +1719,59 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       )}
+
+      {/* Modal Nuova Baseline */}
+      {isBaselineModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Salva Nuova Baseline</h3>
+              <button
+                onClick={() => setIsBaselineModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Nome Baseline
+                </label>
+                <input
+                  type="text"
+                  value={newBaselineName}
+                  onChange={(e) => setNewBaselineName(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Es. Prima Baseline"
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Verranno salvate le date attuali (Inizio e Fine) di tutti i task del progetto, per poterle confrontare in futuro.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setIsBaselineModalOpen(false)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                  disabled={savingBaseline}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleSaveBaseline}
+                  disabled={!newBaselineName.trim() || savingBaseline}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
+                >
+                  {savingBaseline ? 'Salvataggio...' : 'Salva Baseline'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
