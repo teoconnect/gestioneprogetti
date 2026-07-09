@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Trash2, LogOut, RefreshCw } from "lucide-react";
-import { calculateProgress } from "@/lib/utils";
+import { calculateProgress, formatDate } from "@/lib/utils";
 
 type Project = {
   id: string;
@@ -67,8 +67,12 @@ export default function Dashboard() {
 
         if (res.ok) {
             const data = await res.json();
-            // Filter tasks to display a summary
-            setMyTasks(data.filter((t: any) => t.status !== "DONE" && t.status !== "deleted"));
+            // Filter tasks to display a summary (exclude done/deleted tasks, and tasks from deleted projects)
+            setMyTasks(data.filter((t: any) =>
+                t.status !== "DONE" &&
+                t.status !== "deleted" &&
+                t.project?.status !== "deleted"
+            ));
         }
     } catch (e) {
         console.error("Failed to fetch my tasks", e);
@@ -260,7 +264,7 @@ export default function Dashboard() {
                             </div>
                             <h3 className="font-bold text-gray-900 leading-tight mb-3 line-clamp-1">{task.name}</h3>
                             <div className="flex items-center justify-between text-xs text-gray-500 font-semibold">
-                                <span>Scadenza: {new Date(task.endDate).toLocaleDateString()}</span>
+                                <span>Scadenza: {formatDate(task.endDate)}</span>
                                 <span className="text-blue-600">{task.progress}%</span>
                             </div>
                             <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
