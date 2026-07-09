@@ -2,9 +2,10 @@
 
 import { useEffect, useState, use, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings, ChevronUp, ChevronDown, ChevronRight, Search, Filter, Copy } from "lucide-react";
+import { ArrowLeft, Plus, Paperclip, FileText, Calendar, Hash, Trash2, Edit2, Settings, ChevronUp, ChevronDown, ChevronRight, Search, Filter, Copy, Download, Upload } from "lucide-react";
 import GanttChartWrapper from "@/components/GanttChartWrapper";
 import { calculateProgress } from "@/lib/utils";
+import * as XLSX from "xlsx";
 
 type TaskItem = {
   id: string;
@@ -146,6 +147,88 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
     setExpandedTasks(prev =>
       prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
     );
+  };
+
+  const handleExportExcel = () => {
+    if (!project) return;
+
+    const exportData = project.tasks.map(task => {
+      const owners = task.users?.map(u => u.username).join(", ") || "";
+
+      return {
+        "Nome": task.name,
+        "Data Inizio": new Date(task.startDate).toISOString().split('T')[0],
+        "Data Fine": new Date(task.endDate).toISOString().split('T')[0],
+        "Status": task.status,
+        "Proprietari": owners
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Tasks");
+
+    XLSX.writeFile(workbook, `progetto_${project.code}_tasks.xlsx`);
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !project) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const workbook = XLSX.read(bstr, { type: "binary" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data: unknown[] = XLSX.utils.sheet_to_json(worksheet);
+
+        const newTasks = data.map((row: any) => {
+          // Normalize status
+          let status = row["Status"] || "TODO";
+          if (!["TODO", "IN_PROGRESS", "DONE"].includes(status)) {
+             status = "TODO";
+          }
+
+          // Map owners to user IDs
+          const ownerNames = row["Proprietari"] ? String(row["Proprietari"]).split(",").map(s => s.trim()) : [];
+          const matchedUserIds = allSystemUsers
+            .filter(u => ownerNames.includes(u.username))
+            .map(u => u.id);
+
+          return {
+            projectId: project.id,
+            name: row["Nome"] || "Task importato",
+            startDate: row["Data Inizio"] || new Date().toISOString().split('T')[0],
+            endDate: row["Data Fine"] || new Date(Date.now() + 86400000).toISOString().split('T')[0],
+            status: status,
+            userIds: matchedUserIds
+          };
+        });
+
+        if (newTasks.length === 0) return;
+
+        const res = await fetch("/api/tasks/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tasks: newTasks }),
+        });
+
+        if (res.ok) {
+          fetchProject();
+        } else {
+          console.error("Failed to bulk create tasks");
+          alert("Errore durante l'importazione dei task");
+        }
+      } catch (err) {
+        console.error("Error reading excel file", err);
+        alert("Errore durante la lettura del file Excel");
+      }
+    };
+    reader.readAsBinaryString(file);
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
   };
 
   const toggleTaskSelection = (taskId: string) => {
@@ -875,6 +958,26 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   {project.status === 'active' ? 'Attivo' : 'Completato'}
                 </span>
               )}
+
+              <button
+                onClick={handleExportExcel}
+                className="px-3 py-1 text-xs font-bold uppercase rounded-lg flex items-center gap-1.5 transition-all bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:ring-4 hover:ring-emerald-100"
+                title="Esporta in Excel"
+              >
+                <Download size={14} />
+                Esporta
+              </button>
+
+              <label className="px-3 py-1 text-xs font-bold uppercase rounded-lg flex items-center gap-1.5 transition-all bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:ring-4 hover:ring-emerald-100 cursor-pointer" title="Importa da Excel">
+                <Upload size={14} />
+                Importa
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  className="hidden"
+                  onChange={handleImportExcel}
+                />
+              </label>
             </div>
 
             {editingField === "name" ? (
