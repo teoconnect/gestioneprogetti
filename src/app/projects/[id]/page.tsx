@@ -160,6 +160,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         "Data Inizio": new Date(task.startDate).toISOString().split('T')[0],
         "Data Fine": new Date(task.endDate).toISOString().split('T')[0],
         "Status": task.status,
+        "Progresso": task.progress,
         "Proprietari": owners
       };
     });
@@ -191,6 +192,12 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
              status = "TODO";
           }
 
+          let progress = row["Progresso"];
+          if (progress !== undefined) {
+             progress = parseInt(progress, 10);
+             if (isNaN(progress)) progress = undefined;
+          }
+
           // Map owners to user IDs
           const ownerNames = row["Proprietari"] ? String(row["Proprietari"]).split(",").map(s => s.trim()) : [];
           const matchedUserIds = allSystemUsers
@@ -203,6 +210,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
             startDate: row["Data Inizio"] || new Date().toISOString().split('T')[0],
             endDate: row["Data Fine"] || new Date(Date.now() + 86400000).toISOString().split('T')[0],
             status: status,
+            progress: progress,
             userIds: matchedUserIds
           };
         });
@@ -719,12 +727,23 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
 
   const handleInlineTaskUpdate = async (taskId: string, field: "status" | "progress", value: string | number) => {
     try {
+      let body: any = { [field]: value };
+
+      if (field === "status") {
+        if (value === "DONE") body.progress = 100;
+        else if (value === "TODO") body.progress = 0;
+        else if (value === "IN_PROGRESS") body.progress = 50;
+      } else if (field === "progress") {
+        const prog = typeof value === 'string' ? parseInt(value, 10) : (value as number);
+        if (prog === 100) body.status = "DONE";
+        else if (prog === 0) body.status = "TODO";
+        else if (prog >= 1 && prog <= 99) body.status = "IN_PROGRESS";
+      }
+
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          [field]: value,
-        }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         fetchProject();

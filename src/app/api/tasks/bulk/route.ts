@@ -33,18 +33,14 @@ export async function POST(request: Request) {
       let status = taskData.status;
 
       // Synchronization logic
-      if (status && progress === undefined) {
-        if (status === "DONE") progress = 100;
-        else if (status === "TODO") progress = 0;
-        else if (status === "IN_PROGRESS") progress = 50;
-      } else if (progress !== undefined && !status) {
+      if (progress !== undefined) {
         if (progress === 100) status = "DONE";
         else if (progress === 0) status = "TODO";
         else if (progress >= 1 && progress <= 99) status = "IN_PROGRESS";
-      } else if (status && progress !== undefined) {
+      } else if (status && progress === undefined) {
         if (status === "DONE") progress = 100;
         else if (status === "TODO") progress = 0;
-        else if (status === "IN_PROGRESS" && (progress === 0 || progress === 100)) progress = 50;
+        else if (status === "IN_PROGRESS") progress = 50;
       }
 
       const { userIds, ...otherTaskData } = taskData;
