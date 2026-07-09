@@ -251,7 +251,8 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     fetchProject();
     fetchAllSystemUsers();
-  }, [fetchProject]);
+    fetchBaselines();
+  }, [fetchProject, fetchBaselines]);
 
   const fetchAllSystemUsers = async () => {
     try {
