@@ -184,6 +184,9 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         const data = await res.json();
         setBaselines(data);
+        if (data.length > 0) {
+          setSelectedBaselineId(prev => prev || data[0].id);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch baselines:', error);
@@ -1149,9 +1152,47 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
                       <h3 className="text-base font-bold text-gray-900 truncate">{task.name}</h3>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
                           <Calendar size={12} className="text-gray-400" />
-                          <span>{new Date(task.startDate).toLocaleDateString()}</span>
+                          {(() => {
+                            const taskBaseline = getTaskBaseline(task.id);
+                            const currentStartStr = new Date(task.startDate).toLocaleDateString();
+                            const currentEndStr = new Date(task.endDate).toLocaleDateString();
+
+                            if (taskBaseline) {
+                              const baselineStartStr = new Date(taskBaseline.startDate).toLocaleDateString();
+                              const baselineEndStr = new Date(taskBaseline.endDate).toLocaleDateString();
+                              const startDiff = getDaysDifference(task.startDate, taskBaseline.startDate);
+                              const endDiff = getDaysDifference(task.endDate, taskBaseline.endDate);
+
+                              return (
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {startDiff !== 0 ? (
+                                    <>
+                                      <span className="line-through text-gray-400">{baselineStartStr}</span>
+                                      <span className={startDiff > 0 ? "text-red-500 font-bold" : "text-green-500 font-bold"}>
+                                        {currentStartStr} ({startDiff > 0 ? `+${startDiff}` : startDiff}gg)
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span>{currentStartStr}</span>
+                                  )}
+                                  <span> - </span>
+                                  {endDiff !== 0 ? (
+                                    <>
+                                      <span className="line-through text-gray-400">{baselineEndStr}</span>
+                                      <span className={endDiff > 0 ? "text-red-500 font-bold" : "text-green-500 font-bold"}>
+                                        {currentEndStr} ({endDiff > 0 ? `+${endDiff}` : endDiff}gg)
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span>{currentEndStr}</span>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return <span>{currentStartStr} - {currentEndStr}</span>;
+                          })()}
                         </div>
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <span className="text-gray-300 hidden sm:inline">|</span>
