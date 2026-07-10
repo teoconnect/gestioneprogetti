@@ -193,6 +193,7 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
         .gantt-container {
           overflow-y: hidden !important;
           padding-bottom: 20px;
+          box-sizing: content-box !important;
         }
         ${colorStyles}
       `}</style>
