@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, unlink } from "fs/promises";
+import { writeFile, unlink, mkdir } from "fs/promises";
 import path from "path";
 
 export async function DELETE(request: NextRequest) {
@@ -11,13 +11,20 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "No file specified" }, { status: 400 });
     }
 
-    // Estrarre il nome del file dal percorso (es. /uploads/123-file.txt -> 123-file.txt)
-    const filename = fileUrl.split("/").pop();
-    if (!filename) {
+    // Estrarre id progetto e nome file dal percorso (es. /api/uploads/123/file.txt)
+    const parts = fileUrl.split("/");
+    const filename = parts.pop();
+    const projectId = parts.pop();
+
+    if (!filename || !projectId) {
       return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
     }
 
-    const filepath = path.join(process.cwd(), "public", "uploads", filename);
+    // Sicurezza contro path traversal
+    const safeFilename = path.basename(filename);
+    const safeProjectId = path.basename(projectId);
+
+    const filepath = path.join(process.cwd(), "data", "uploads", safeProjectId, safeFilename);
 
     // Tentativo di eliminazione del file
     await unlink(filepath);
@@ -34,6 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
+    const projectId = formData.get("projectId") as string | null;
 
     if (!file) {
       return NextResponse.json(
@@ -42,20 +50,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!projectId) {
+      return NextResponse.json(
+        { error: "No project ID specified" },
+        { status: 400 }
+      );
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save to public/uploads directory
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    // Prevent directory traversal
+    const safeProjectId = path.basename(projectId);
+
+    // Save to data/uploads/[projectId] directory
+    const uploadDir = path.join(process.cwd(), "data", "uploads", safeProjectId);
+
+    // Ensure directory exists
+    await mkdir(uploadDir, { recursive: true });
+
     const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const filename = `${Date.now()}-${sanitizedFilename}`;
     const filepath = path.join(uploadDir, filename);
 
-    // Write file to public/uploads
+    // Write file to data/uploads/[projectId]
     await writeFile(filepath, buffer);
 
-    // Return the path relative to public directory for URL access
-    return NextResponse.json({ path: `/uploads/${filename}` }, { status: 201 });
+    // Return the path for the API route
+    return NextResponse.json({ path: `/api/uploads/${safeProjectId}/${filename}` }, { status: 201 });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(

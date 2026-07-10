@@ -136,9 +136,13 @@ export async function DELETE(
         for (const item of task.items) {
           if (item.value) {
             try {
-              const filename = item.value.split("/").pop();
-              if (filename) {
-                const filepath = path.join(process.cwd(), "public", "uploads", filename);
+              const parts = item.value.split("/");
+              const filename = parts.pop();
+              const projectId = parts.pop();
+              if (filename && projectId) {
+                const safeFilename = path.basename(filename);
+                const safeProjectId = path.basename(projectId);
+                const filepath = path.join(process.cwd(), "data", "uploads", safeProjectId, safeFilename);
                 await unlink(filepath);
               }
             } catch (err) {

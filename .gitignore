@@ -47,3 +47,4 @@ public/uploads/
 dev.db-journal
 dev_server.log
 *.log
+data/
