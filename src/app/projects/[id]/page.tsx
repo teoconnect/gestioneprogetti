@@ -1559,8 +1559,14 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       {showTaskModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl w-full max-w-2xl shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">{isEditingTask ? "Modifica Task" : "Nuovo Task"}</h2>
             <form onSubmit={handleCreateOrUpdateTask} className="space-y-4">
+              <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-800">{isEditingTask ? "Modifica Task" : "Nuovo Task"}</h2>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => { setShowTaskModal(false); resetTaskForm(); }} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition text-sm">Annulla</button>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition text-sm">Salva Task</button>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome Task</label>
                 <input required type="text" value={taskName} onChange={e => setTaskName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
@@ -1719,10 +1725,6 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => { setShowTaskModal(false); resetTaskForm(); }} className="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition">Annulla</button>
-                <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition">Salva Task</button>
-              </div>
             </form>
           </div>
         </div>
