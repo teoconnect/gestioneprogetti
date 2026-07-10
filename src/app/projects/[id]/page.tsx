@@ -161,6 +161,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         "Data Fine": new Date(task.endDate).toISOString().split('T')[0],
         "Status": task.status,
         "Progresso": task.progress,
+        "Colore": task.color || "",
         "Proprietari": owners
       };
     });
@@ -198,6 +199,17 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
              if (isNaN(progress)) progress = undefined;
           }
 
+          let color = row["Colore"];
+          if (color && typeof color === 'string') {
+             color = color.trim();
+             // Validate hex color
+             if (!/^#([0-9A-Fa-f]{3}){1,2}$/i.test(color)) {
+                color = undefined;
+             }
+          } else {
+             color = undefined;
+          }
+
           // Map owners to user IDs
           const ownerNames = row["Proprietari"] ? String(row["Proprietari"]).split(",").map(s => s.trim()) : [];
           const matchedUserIds = allSystemUsers
@@ -211,6 +223,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
             endDate: row["Data Fine"] || new Date(Date.now() + 86400000).toISOString().split('T')[0],
             status: status,
             progress: progress,
+            color: color,
             userIds: matchedUserIds
           };
         });
@@ -1270,7 +1283,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   <div className={`transition-transform duration-200 text-gray-400 ${isExpanded ? 'rotate-90' : ''}`}>
                     <ChevronRight size={20} />
                   </div>
-                  <div className="w-1.5 h-8 rounded-full shrink-0" style={{ backgroundColor: task.color || '#3b82f6' }}></div>
+                  <div className="w-1.5 h-8 rounded-full shrink-0" style={{ backgroundColor: task.color || '#10b981' }}></div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
@@ -1618,9 +1631,14 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Colore (es. #ff0000)</label>
-                  <div className="flex gap-2">
-                    <input type="color" value={taskColor || "#10b981"} onChange={e => setTaskColor(e.target.value)} className="h-10 w-10 border border-gray-300 rounded cursor-pointer" />
+                  <div className="flex gap-2 items-center">
+                    <input type="color" value={taskColor || "#10b981"} onChange={e => setTaskColor(e.target.value)} className="h-10 w-10 border border-gray-300 rounded cursor-pointer shrink-0" />
                     <input type="text" placeholder="#10b981" value={taskColor} onChange={e => setTaskColor(e.target.value)} className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" />
+                    <div className="flex gap-1.5 ml-2">
+                      <button type="button" onClick={() => setTaskColor("#10b981")} className="w-6 h-6 rounded-full cursor-pointer hover:scale-110 transition-transform shadow-sm" style={{ backgroundColor: "#10b981" }} title="Verde"></button>
+                      <button type="button" onClick={() => setTaskColor("#eab308")} className="w-6 h-6 rounded-full cursor-pointer hover:scale-110 transition-transform shadow-sm" style={{ backgroundColor: "#eab308" }} title="Giallo"></button>
+                      <button type="button" onClick={() => setTaskColor("#ef4444")} className="w-6 h-6 rounded-full cursor-pointer hover:scale-110 transition-transform shadow-sm" style={{ backgroundColor: "#ef4444" }} title="Rosso"></button>
+                    </div>
                   </div>
                 </div>
               </div>
