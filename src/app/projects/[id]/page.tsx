@@ -1283,7 +1283,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
                   <div className={`transition-transform duration-200 text-gray-400 ${isExpanded ? 'rotate-90' : ''}`}>
                     <ChevronRight size={20} />
                   </div>
-                  <div className="w-1.5 h-8 rounded-full shrink-0" style={{ backgroundColor: task.color || '#3b82f6' }}></div>
+                  <div className="w-1.5 h-8 rounded-full shrink-0" style={{ backgroundColor: task.color || '#10b981' }}></div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
