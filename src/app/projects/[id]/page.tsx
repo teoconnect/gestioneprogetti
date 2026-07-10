@@ -161,6 +161,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
         "Data Fine": new Date(task.endDate).toISOString().split('T')[0],
         "Status": task.status,
         "Progresso": task.progress,
+        "Colore": task.color || "",
         "Proprietari": owners
       };
     });
@@ -198,6 +199,17 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
              if (isNaN(progress)) progress = undefined;
           }
 
+          let color = row["Colore"];
+          if (color && typeof color === 'string') {
+             color = color.trim();
+             // Validate hex color
+             if (!/^#([0-9A-Fa-f]{3}){1,2}$/i.test(color)) {
+                color = undefined;
+             }
+          } else {
+             color = undefined;
+          }
+
           // Map owners to user IDs
           const ownerNames = row["Proprietari"] ? String(row["Proprietari"]).split(",").map(s => s.trim()) : [];
           const matchedUserIds = allSystemUsers
@@ -211,6 +223,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
             endDate: row["Data Fine"] || new Date(Date.now() + 86400000).toISOString().split('T')[0],
             status: status,
             progress: progress,
+            color: color,
             userIds: matchedUserIds
           };
         });
