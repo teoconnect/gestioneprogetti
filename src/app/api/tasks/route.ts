@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     let progress = data.progress !== undefined ? parseInt(data.progress, 10) : undefined;
     let status = data.status;
 
-    // Logica di sincronizzazione iniziale
+    // Se manca uno dei due, lo deriviamo dall'altro
     if (status && progress === undefined) {
       if (status === "DONE") progress = 100;
       else if (status === "TODO") progress = 0;
@@ -79,11 +79,9 @@ export async function POST(request: Request) {
       else if (progress === 0) status = "TODO";
       else if (progress >= 1 && progress <= 99) status = "IN_PROGRESS";
     } else if (status && progress !== undefined) {
-      // Se entrambi sono forniti, diamo priorità alla coerenza (lo stato vince se discordanti?)
-      // In base alla richiesta, implementiamo la sincronizzazione coerente.
+      // Risoluzione conflitti se entrambi sono forniti
       if (status === "DONE") progress = 100;
       else if (status === "TODO") progress = 0;
-      // Per IN_PROGRESS, se il progresso è già tra 1-99 lo teniamo, altrimenti 50
       else if (status === "IN_PROGRESS" && (progress === 0 || progress === 100)) progress = 50;
     }
 
