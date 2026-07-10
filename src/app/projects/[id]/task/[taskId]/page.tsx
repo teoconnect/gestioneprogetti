@@ -164,7 +164,7 @@ export default function TaskDetails({ params }: { params: Promise<{ id: string; 
   if (!task) return <div className="text-center py-10">Task non trovato</div>;
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-full">
       <div className="flex justify-between items-center mb-6">
         {!isModal ? (
           <Link href={`/projects/${resolvedParams.id}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 transition">

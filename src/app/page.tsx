@@ -211,7 +211,7 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
+    <div className="container mx-auto p-4 sm:p-6 max-w-full">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Progetti</h1>

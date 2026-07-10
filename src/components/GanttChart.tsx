@@ -98,6 +98,8 @@ export default function GanttChart({ tasks, onTaskUpdate, onTaskProgressUpdate, 
     const newGantt = new Gantt(containerRef.current, formattedTasks, {
       view_mode: viewMode,
       move_dependencies: false,
+      bar_height: 15,
+      padding: 9,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       on_date_change: (task: any, start: Date, end: Date) => {
         const originalTask = tasks.find((t) => t.id === task.id);

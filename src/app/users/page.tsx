@@ -124,7 +124,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+    <div className="container mx-auto p-4 sm:p-6 max-w-full">
       <Link href="/" className="group inline-flex items-center text-gray-500 hover:text-blue-600 mb-6 transition-all font-semibold">
         <ArrowLeft size={18} className="mr-2 group-hover:-translate-x-1 transition-transform" />
         Torna alla Dashboard
