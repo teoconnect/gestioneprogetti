@@ -9,9 +9,13 @@ import { verifyAuth } from "@/lib/auth";
 async function deleteFileIfAttachment(type: string, value: string | null) {
   if (type === "attachment" && value) {
     try {
-      const filename = value.split("/").pop();
-      if (filename) {
-        const filepath = path.join(process.cwd(), "public", "uploads", filename);
+      const parts = value.split("/");
+      const filename = parts.pop();
+      const projectId = parts.pop();
+      if (filename && projectId) {
+        const safeFilename = path.basename(filename);
+        const safeProjectId = path.basename(projectId);
+        const filepath = path.join(process.cwd(), "data", "uploads", safeProjectId, safeFilename);
         await unlink(filepath);
       }
     } catch (err) {

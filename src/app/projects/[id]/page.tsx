@@ -652,6 +652,7 @@ export default function ProjectDetails({ params }: { params: Promise<{ id: strin
       if (itemType === "attachment" && itemFile) {
         const formData = new FormData();
         formData.append("file", itemFile);
+        formData.append("projectId", resolvedParams.id);
         const uploadRes = await fetch("/api/uploads", {
           method: "POST",
           body: formData,
